@@ -1,0 +1,2387 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Ujian Biologi - Dinamis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { primary: '#0D9488', primaryDark: '#0F766E', secondary: '#3B82F6', accent: '#8B5CF6' } } }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col antialiased selection:bg-teal-500 selection:text-white">
+
+    <!-- HEADER -->
+    <header class="bg-teal-700 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/10 p-2 rounded-lg">
+                    <i class="fa-solid fa-dna text-2xl text-teal-200"></i>
+                </div>
+                <div>
+                    <h1 id="header-title" class="font-bold text-lg leading-tight">PORTAL UJIAN BIOLOGI</h1>
+                    <p id="header-subtitle" class="text-xs text-teal-200">Memuat metadata paket ujian...</p>
+                </div>
+            </div>
+            
+            <div id="header-user-info" class="hidden md:flex items-center gap-4 text-sm bg-teal-800/60 px-4 py-1.5 rounded-full border border-teal-600/40">
+                <div><i class="fa-solid fa-user text-teal-300 mr-1.5"></i><span id="user-display-name">-</span></div>
+                <div class="border-l border-teal-600 pl-4"><i class="fa-solid fa-graduation-cap text-teal-300 mr-1.5"></i><span id="user-display-class">-</span></div>
+                <div class="border-l border-teal-600 pl-4"><i class="fa-solid fa-hashtag text-teal-300 mr-1.5"></i><span id="user-display-no">-</span></div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="openTeacherDashboardModal()" class="bg-teal-800 hover:bg-teal-900 border border-teal-500/50 text-teal-100 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-sm">
+                    <i class="fa-solid fa-user-shield text-amber-300"></i>
+                    <span class="font-semibold hidden sm:inline">Dashboard Guru</span>
+                </button>
+                <div id="timer-box" class="hidden items-center bg-amber-500 text-amber-950 font-bold px-3 py-1.5 rounded-lg shadow-sm text-sm">
+                    <i class="fa-regular fa-clock mr-2"></i>
+                    <span id="timer-count">90:00</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6">
+
+        <!-- SCREEN 1: REGISTRATION -->
+        <div id="screen-start" class="max-w-xl mx-auto my-8 bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+            <div class="bg-gradient-to-r from-teal-600 to-teal-800 p-6 text-white text-center">
+                <i class="fa-solid fa-microscope text-5xl mb-3 text-teal-200"></i>
+                <h2 id="start-screen-title" class="text-2xl font-bold">Portal Ujian</h2>
+                <p id="start-screen-subtitle" class="text-teal-100 text-sm mt-1">Isi identitas diri dengan benar sebelum memulai ujian.</p>
+                <div class="flex flex-wrap justify-center gap-2 mt-4 text-[11px]">
+                    <span id="info-pill-grade" class="bg-white/10 border border-white/20 px-2.5 py-1 rounded-full"><i class="fa-solid fa-layer-group mr-1"></i>Kelas: -</span>
+                    <span id="info-pill-subject" class="bg-white/10 border border-white/20 px-2.5 py-1 rounded-full"><i class="fa-solid fa-book mr-1"></i>Mapel: -</span>
+                    <span id="info-pill-material" class="bg-white/10 border border-white/20 px-2.5 py-1 rounded-full"><i class="fa-solid fa-flask mr-1"></i>Materi: -</span>
+                    <span id="info-pill-duration" class="bg-white/10 border border-white/20 px-2.5 py-1 rounded-full"><i class="fa-regular fa-clock mr-1"></i>Durasi: -</span>
+                    <span id="info-pill-kkm" class="bg-white/10 border border-white/20 px-2.5 py-1 rounded-full"><i class="fa-solid fa-bullseye mr-1"></i>KKM: -</span>
+                </div>
+            </div>
+            
+            <div class="p-6 md:p-8 space-y-5">
+                <div class="bg-teal-50 border-l-4 border-teal-500 p-4 rounded-r-lg text-sm text-teal-900 space-y-1">
+                    <p class="font-semibold text-teal-800"><i class="fa-solid fa-circle-info mr-1.5"></i>Ketentuan Ujian:</p>
+                    <ul id="exam-rules" class="list-disc list-inside space-y-1 text-xs md:text-sm text-teal-900/90 pl-1"></ul>
+                </div>
+
+                <form id="form-register" onsubmit="startExam(event)" class="space-y-4 relative">
+                    <div class="relative">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Nama Lengkap Siswa</label>
+                        <input type="text" id="input-name" required placeholder="Ketik nama atau pilih dari master" 
+                            class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition" oninput="onNameInput()" onblur="setTimeout(closeNameSuggestions, 200)">
+                        <div id="name-suggestions" class="hidden absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"></div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Kelas</label>
+                            <select id="input-class" required onchange="onClassChange()" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition">
+                                <option value="">-- Pilih Kelas --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Nomor Absen</label>
+                            <input type="number" id="input-no" min="1" max="99" required placeholder="Contoh: 05" 
+                                class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition" oninput="onAbsenInput()">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-teal-500/20 transition duration-200 flex items-center justify-center gap-2 mt-4">
+                        <i class="fa-solid fa-paper-plane"></i> Mulai Kerjakan Ujian
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: EXAM -->
+        <div id="screen-exam" class="hidden grid-cols-1 lg:grid-cols-4 gap-6">
+            <div class="lg:col-span-3 space-y-6">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 md:p-7 relative">
+                    <div class="flex justify-between items-center pb-4 mb-5 border-b border-slate-200">
+                        <div class="flex items-center gap-2">
+                            <span id="q-number-badge" class="bg-teal-600 text-white font-bold text-sm px-3 py-1 rounded-lg">Soal #1</span>
+                            <span id="q-type-badge" class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-md">Pilihan Ganda</span>
+                        </div>
+                        <div class="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                            Bobot: <span id="q-points" class="text-teal-700 font-bold">3 Poin</span>
+                        </div>
+                    </div>
+                    <div id="q-content" class="space-y-4 text-slate-800 text-sm md:text-base leading-relaxed"></div>
+                    <div id="q-options" class="mt-6 space-y-3"></div>
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-6 mt-8 border-t border-slate-200">
+                        <button id="btn-prev" onclick="navigateQuestion(-1)" class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg text-sm transition flex items-center gap-2">
+                            <i class="fa-solid fa-arrow-left"></i> Sebelumnya
+                        </button>
+                        <button id="btn-flag" onclick="toggleFlag()" class="px-4 py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-800 font-semibold rounded-lg text-sm transition flex items-center gap-2">
+                            <i class="fa-regular fa-flag"></i> Ragu-Ragu
+                        </button>
+                        <button id="btn-next" onclick="navigateQuestion(1)" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg text-sm transition flex items-center gap-2">
+                            Selanjutnya <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-1 space-y-4">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sticky top-20">
+                    <h3 class="font-bold text-slate-800 text-sm mb-3 flex items-center justify-between">
+                        <span><i class="fa-solid fa-grip mr-2 text-teal-600"></i>Navigasi Soal</span>
+                        <span id="progress-summary" class="text-xs text-slate-500 font-normal">0/35 Terjawab</span>
+                    </h3>
+                    <div id="question-grid" class="grid grid-cols-5 gap-2 max-h-[360px] overflow-y-auto p-1"></div>
+                    <div class="mt-5 pt-4 border-t border-slate-200 text-xs space-y-2 text-slate-600">
+                        <div class="flex items-center gap-2"><span class="w-3.5 h-3.5 bg-teal-600 rounded"></span> Terjawab</div>
+                        <div class="flex items-center gap-2"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span> Ragu-Ragu</div>
+                        <div class="flex items-center gap-2"><span class="w-3.5 h-3.5 bg-slate-200 border border-slate-300 rounded"></span> Belum Dijawab</div>
+                    </div>
+                    <button onclick="promptSubmitExam()" class="w-full mt-5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg shadow transition flex items-center justify-center gap-2 text-sm">
+                        <i class="fa-solid fa-circle-check"></i> Kumpulkan Ujian
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: RESULTS -->
+        <div id="screen-result" class="hidden space-y-6 max-w-4xl mx-auto my-4">
+            <div class="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
+                <div id="result-banner" class="bg-gradient-to-r from-teal-700 to-teal-900 text-white p-6 md:p-8 text-center">
+                    <div class="inline-block p-3 bg-white/10 rounded-full mb-2">
+                        <i class="fa-solid fa-award text-4xl text-amber-300"></i>
+                    </div>
+                    <h2 id="result-banner-title" class="text-2xl md:text-3xl font-extrabold">Hasil Ujian</h2>
+                    <p class="text-teal-100 text-sm mt-1" id="result-student-info">Nama: - | Kelas: -</p>
+                    <div class="my-6 inline-flex flex-col items-center justify-center bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 min-w-[220px]">
+                        <span class="text-xs uppercase tracking-widest text-teal-200 font-semibold mb-1">Skor Akhir Siswa</span>
+                        <span id="final-score-text" class="text-5xl font-black tracking-tight text-white">0</span>
+                        <span class="text-xs text-teal-200 mt-1">Dari Total Nilai Maksimal 100</span>
+                    </div>
+                    <div id="result-status-badge" class="inline-block px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500 text-white shadow-sm">TUNTAS KKM</div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-200 bg-slate-50 text-center py-4">
+                    <div class="p-3"><p class="text-xs text-slate-500 font-medium">Pilihan Ganda</p><p id="score-pg" class="text-lg font-bold text-slate-800">0 / 60</p></div>
+                    <div class="p-3"><p class="text-xs text-slate-500 font-medium">Benar / Salah</p><p id="score-bs" class="text-lg font-bold text-slate-800">0 / 20</p></div>
+                    <div class="p-3"><p class="text-xs text-slate-500 font-medium">PG Kompleks</p><p id="score-pgk" class="text-lg font-bold text-slate-800">0 / 20</p></div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs md:text-sm text-amber-900">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-lock text-amber-600 text-base"></i>
+                    <span>Ujian telah selesai dan terkunci. Pembahasan dapat dilihat di bawah ini.</span>
+                </div>
+                <button onclick="promptResetExam()" class="text-xs text-amber-700 underline font-semibold hover:text-amber-900 shrink-0 ml-2">[Reset - Guru]</button>
+            </div>
+
+            <div class="pt-4">
+                <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-book-open-reader text-teal-600"></i> Kunci Jawaban & Pembahasan Lengkap
+                </h3>
+                <p class="text-xs text-slate-500">Evaluasi seluruh jawaban Anda di bawah ini secara cermat.</p>
+            </div>
+            <div id="pembahasan-list" class="space-y-6"></div>
+        </div>
+
+        <!-- SCREEN 4: DASHBOARD GURU -->
+        <div id="screen-teacher" class="hidden space-y-6">
+            <input id="question-import-file" type="file" accept=".xlsx,.xls,.csv,.json,.docx" class="hidden" onchange="importQuestionsFromFile(event)">
+
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-chalkboard-user text-teal-600"></i> Dashboard Guru
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">Kelola paket ujian, master data, dan pantau hasil siswa.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="sync-status" class="text-[11px] text-slate-500 flex items-center gap-1.5 mr-2">
+                            <span class="w-2 h-2 bg-slate-400 rounded-full"></span> Sinkronisasi: Cek
+                        </span>
+                        <button onclick="closeTeacherDashboard()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg text-xs flex items-center gap-2 transition">
+                            <i class="fa-solid fa-right-from-bracket"></i> Keluar
+                        </button>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-1 border-t border-slate-100 pt-3">
+                    <button onclick="switchTeacherTab('packages')" id="tab-btn-packages" class="px-4 py-2 rounded-lg text-xs font-semibold bg-teal-600 text-white transition">
+                        <i class="fa-solid fa-box-archive mr-1"></i> Paket Ujian
+                    </button>
+                    <button onclick="switchTeacherTab('classes')" id="tab-btn-classes" class="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                        <i class="fa-solid fa-school mr-1"></i> Master Kelas
+                    </button>
+                    <button onclick="switchTeacherTab('students')" id="tab-btn-students" class="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                        <i class="fa-solid fa-users mr-1"></i> Master Siswa
+                    </button>
+                    <button onclick="switchTeacherTab('results')" id="tab-btn-results" class="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                        <i class="fa-solid fa-chart-column mr-1"></i> Hasil Ujian
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB: PACKAGES -->
+            <div id="tab-content-packages" class="space-y-6">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div>
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-layer-group text-teal-600"></i> Bank Paket Ujian</h3>
+                            <p class="text-xs text-slate-500 mt-1">Setiap paket memiliki Metadata Ujian. Aktifkan paket untuk mengubah Portal Siswa.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button onclick="openCreatePackageModal()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs flex items-center gap-2 shadow">
+                                <i class="fa-solid fa-plus"></i> Buat Paket Kosong
+                            </button>
+                            <button onclick="openQuestionImportMenu()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-xs flex items-center gap-2 shadow">
+                                <i class="fa-solid fa-file-import"></i> Import Soal
+                            </button>
+                            <button onclick="downloadQuestionTemplateExcel()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs flex items-center gap-2 shadow">
+                                <i class="fa-solid fa-file-excel"></i> Template Excel
+                            </button>
+                            <button onclick="downloadQuestionTemplateWord()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-xs flex items-center gap-2 shadow">
+                                <i class="fa-solid fa-file-word"></i> Template Word
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="active-package-highlight" class="bg-gradient-to-r from-teal-700 to-teal-900 text-white rounded-2xl p-5 shadow-md"></div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-slate-800 mb-3"><i class="fa-solid fa-list text-teal-600 mr-2"></i> Daftar Paket Tersimpan</h3>
+                    <div id="question-package-list" class="grid md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+                </div>
+            </div>
+
+            <!-- TAB: MASTER CLASSES -->
+            <div id="tab-content-classes" class="hidden space-y-6">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-school text-teal-600"></i> Master Data Kelas</h3>
+                        <p class="text-xs text-slate-500 mt-1">Daftar kelas tersinkron cloud. Digunakan sebagai opsi pendaftaran siswa.</p>
+                    </div>
+                    <button onclick="openCreateClassModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs flex items-center gap-2 shadow">
+                        <i class="fa-solid fa-plus"></i> Tambah Kelas
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                                <th class="p-3.5 text-center">No</th>
+                                <th class="p-3.5">Tingkat</th>
+                                <th class="p-3.5">Nama Kelas</th>
+                                <th class="p-3.5 text-center">Jumlah Siswa</th>
+                                <th class="p-3.5 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="master-classes-tbody" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB: MASTER STUDENTS -->
+            <div id="tab-content-students" class="hidden space-y-6">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-users text-teal-600"></i> Master Data Siswa</h3>
+                        <p class="text-xs text-slate-500 mt-1">Daftar siswa tersinkron cloud. Memudahkan siswa saat input identitas.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="openBulkStudentModal()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-xs flex items-center gap-2 shadow">
+                            <i class="fa-solid fa-list-ol"></i> Input Cepat (Massal)
+                        </button>
+                        <button onclick="openCreateStudentModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs flex items-center gap-2 shadow">
+                            <i class="fa-solid fa-plus"></i> Tambah Siswa
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <select id="filter-master-student-class" onchange="renderMasterStudents()" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500">
+                            <option value="ALL">Semua Kelas</option>
+                        </select>
+                    </div>
+                    <div class="w-full md:w-72">
+                        <input type="text" id="search-master-student" onkeyup="renderMasterStudents()" placeholder="Cari nama / absen siswa..." class="w-full px-3.5 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                                <th class="p-3.5 text-center">No</th>
+                                <th class="p-3.5">Nama Siswa</th>
+                                <th class="p-3.5">Kelas</th>
+                                <th class="p-3.5 text-center">Absen</th>
+                                <th class="p-3.5 text-center">Tingkat</th>
+                                <th class="p-3.5 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="master-students-tbody" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB: RESULTS -->
+            <div id="tab-content-results" class="hidden space-y-6">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p class="text-xs text-slate-500 font-medium">Total Siswa Ujian</p>
+                        <p id="stat-total-students" class="text-3xl font-black text-teal-700 mt-1">0</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p class="text-xs text-slate-500 font-medium">Rata-Rata Nilai</p>
+                        <p id="stat-avg-score" class="text-3xl font-black text-blue-600 mt-1">0</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p class="text-xs text-slate-500 font-medium">Siswa Tuntas</p>
+                        <p id="stat-passed-students" class="text-3xl font-black text-emerald-600 mt-1">0</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p class="text-xs text-slate-500 font-medium">Tertinggi / Terendah</p>
+                        <p id="stat-min-max" class="text-xl font-extrabold text-slate-800 mt-2">0 / 0</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <select id="filter-class" onchange="renderTeacherDashboard()" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500">
+                            <option value="ALL">Semua Kelas</option>
+                        </select>
+                        <select id="sort-order" onchange="renderTeacherDashboard()" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500">
+                            <option value="NEWEST">Waktu Terbaru</option>
+                            <option value="SCORE_DESC">Nilai Tertinggi</option>
+                            <option value="SCORE_ASC">Nilai Terendah</option>
+                            <option value="NAME_ASC">Nama (A-Z)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2 w-full md:w-72">
+                        <input type="text" id="search-student" onkeyup="renderTeacherDashboard()" placeholder="Cari nama/absen..." class="w-full px-3.5 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 outline-none">
+                        <button onclick="exportTeacherDataToCSV()" class="px-3 py-2 bg-slate-700 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs flex items-center gap-2 shadow">
+                            <i class="fa-solid fa-file-csv"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                                <th class="p-3.5 text-center">No</th>
+                                <th class="p-3.5">Nama Siswa</th>
+                                <th class="p-3.5">Kelas</th>
+                                <th class="p-3.5 text-center">Absen</th>
+                                <th class="p-3.5 text-center">PG</th>
+                                <th class="p-3.5 text-center">B/S</th>
+                                <th class="p-3.5 text-center">PGK</th>
+                                <th class="p-3.5 text-center">Total</th>
+                                <th class="p-3.5 text-center">Status</th>
+                                <th class="p-3.5">Waktu Selesai</th>
+                                <th class="p-3.5 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teacher-table-body" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- TEACHER AUTH MODAL -->
+    <div id="modal-teacher-auth" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-slate-800">
+            <div class="text-center">
+                <div class="w-12 h-12 bg-teal-100 text-teal-700 rounded-full flex items-center justify-center mx-auto mb-2 text-xl"><i class="fa-solid fa-lock"></i></div>
+                <h3 class="text-lg font-bold">Akses Dashboard Guru</h3>
+                <p class="text-xs text-slate-500 mt-1">Masukkan kata sandi khusus guru.</p>
+            </div>
+            <form onsubmit="verifyTeacherPassword(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Kata Sandi</label>
+                    <input type="password" id="input-teacher-pwd" required placeholder="Masukkan kata sandi..." class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                    <p id="teacher-auth-error" class="hidden text-xs text-rose-600 font-medium mt-1"></p>
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-2">
+                    <button type="button" onclick="closeTeacherAuthModal()" class="py-2.5 bg-slate-200 hover:bg-slate-300 font-semibold rounded-lg text-xs text-slate-700 transition">Batal</button>
+                    <button type="submit" class="py-2.5 bg-teal-600 hover:bg-teal-700 font-semibold rounded-lg text-xs text-white shadow transition">Masuk</button>
+                </div>
+            </form>
+            <p class="text-[11px] text-center text-slate-400">Default: <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-600 font-bold">*******</code></p>
+        </div>
+    </div>
+
+    <!-- STUDENT DETAIL MODAL -->
+    <div id="modal-student-detail" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 text-slate-800 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div>
+                    <h3 id="detail-student-title" class="font-bold text-base text-slate-800">Detail Jawaban Siswa</h3>
+                    <p id="detail-student-score" class="text-xs text-teal-700 font-semibold mt-0.5">Total Skor: 0 / 100</p>
+                </div>
+                <button onclick="closeStudentDetailModal()" class="text-slate-400 hover:text-slate-600 text-lg w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="detail-student-body" class="flex-grow overflow-y-auto space-y-3 pr-1"></div>
+            <div class="pt-2 text-right border-t">
+                <button onclick="closeStudentDetailModal()" class="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-xs font-semibold rounded-lg text-slate-700">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT STUDENT MODAL -->
+    <div id="modal-edit-student" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-slate-800">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div>
+                    <h3 class="font-bold text-base text-slate-800 flex items-center gap-2"><i class="fa-solid fa-user-pen text-teal-600"></i> Edit Data Siswa Ujian</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Perubahan identitas pada dokumen hasil ujian.</p>
+                </div>
+                <button onclick="closeEditStudentModal()" class="text-slate-400 hover:text-slate-600 text-lg w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-edit-student" onsubmit="saveEditedStudent(event)" class="space-y-3">
+                <input type="hidden" id="edit-doc-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Lengkap</label>
+                    <input type="text" id="edit-name" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Kelas</label>
+                        <select id="edit-class" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Nomor Absen</label>
+                        <input type="number" id="edit-no" min="1" max="99" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                    </div>
+                </div>
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex items-start gap-2">
+                    <i class="fa-solid fa-circle-info mt-0.5"></i>
+                    <span>Catatan: Mengubah identitas akan menghasilkan ID dokumen baru. Jika sudah dipakai, data akan ditimpa.</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-2">
+                    <button type="button" onclick="closeEditStudentModal()" class="py-2.5 bg-slate-200 hover:bg-slate-300 font-semibold rounded-lg text-sm text-slate-700 transition">Batal</button>
+                    <button type="submit" class="py-2.5 bg-teal-600 hover:bg-teal-700 font-semibold rounded-lg text-sm text-white shadow transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> Simpan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CONFIRM SUBMIT MODAL -->
+    <div id="modal-submit" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-slate-800">
+            <div class="text-center">
+                <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <h3 class="text-lg font-bold">Konfirmasi Pengumpulan Ujian</h3>
+                <p class="text-sm text-slate-600 mt-1">Yakin ingin mengakhiri dan mengumpulkan jawaban?</p>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-3 text-xs space-y-1.5 border border-slate-200">
+                <div class="flex justify-between"><span class="text-slate-500">Soal Terjawab:</span><span id="modal-answered-count" class="font-bold text-emerald-600">0 / 35</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Belum Terjawab:</span><span id="modal-unanswered-count" class="font-bold text-rose-600">0 / 35</span></div>
+            </div>
+            <p class="text-xs text-rose-600 font-medium text-center">Setelah dikumpulkan, jawaban tidak dapat diubah!</p>
+            <div class="grid grid-cols-2 gap-3 pt-2">
+                <button onclick="closeSubmitModal()" class="py-2.5 bg-slate-200 hover:bg-slate-300 font-semibold rounded-lg text-sm text-slate-700 transition">Batal</button>
+                <button onclick="submitExam()" class="py-2.5 bg-emerald-600 hover:bg-emerald-700 font-semibold rounded-lg text-sm text-white shadow transition">Ya, Kumpulkan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PACKAGE METADATA MODAL -->
+    <div id="modal-package-metadata" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-slate-800 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div>
+                    <h3 id="package-modal-title" class="font-bold text-base text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-box text-teal-600"></i> Metadata Paket Ujian
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Informasi ini akan menentukan tampilan Portal Siswa.</p>
+                </div>
+                <button onclick="closePackageMetadataModal()" class="text-slate-400 hover:text-slate-600 text-lg w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-package-metadata" onsubmit="savePackageMetadata(event)" class="space-y-3">
+                <input type="hidden" id="pkg-edit-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Ujian *</label>
+                    <input type="text" id="pkg-exam-name" required placeholder="Contoh: Ulangan Harian Biologi XI" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Tingkat Kelas *</label>
+                        <select id="pkg-grade" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                            <option value="X">Kelas X</option>
+                            <option value="XI">Kelas XI</option>
+                            <option value="XII">Kelas XII</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Mata Pelajaran *</label>
+                        <input type="text" id="pkg-subject" required value="Biologi" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Materi / Judul Bab *</label>
+                    <input type="text" id="pkg-material" required placeholder="Contoh: Bioproses Sel" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Durasi (menit) *</label>
+                        <input type="number" id="pkg-duration" required min="1" max="300" value="90" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">KKM *</label>
+                        <input type="number" id="pkg-kkm" required min="0" max="100" value="75" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Tahun Ajaran</label>
+                        <input type="text" id="pkg-academic-year" value="2026/2027" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-2">
+                    <button type="button" onclick="closePackageMetadataModal()" class="py-2.5 bg-slate-200 hover:bg-slate-300 font-semibold rounded-lg text-sm text-slate-700 transition">Batal</button>
+                    <button type="submit" class="py-2.5 bg-teal-600 hover:bg-teal-700 font-semibold rounded-lg text-sm text-white shadow transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> Simpan Paket
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- EDIT CLASS MODAL -->
+    <div id="modal-edit-class" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-slate-800">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div>
+                    <h3 id="class-modal-title" class="font-bold text-base text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-school text-teal-600"></i> Tambah / Edit Kelas
+                    </h3>
+                </div>
+                <button onclick="closeEditClassModal()" class="text-slate-400 hover:text-slate-600 text-lg w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-edit-class" onsubmit="saveMasterClass(event)" class="space-y-3">
+                <input type="hidden" id="class-edit-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Tingkat Kelas *</label>
+                    <select id="class-grade" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                        <option value="X">Kelas X</option>
+                        <option value="XI">Kelas XI</option>
+                        <option value="XII">Kelas XII</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Kelas *</label>
+                    <input type="text" id="class-name" required placeholder="Contoh: XI-1 atau XI IPA 1" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-2">
+                    <button type="button" onclick="closeEditClassModal()" class="py-2.5 bg-slate-200 hover:bg-slate-300 font-semibold rounded-lg text-sm text-slate-700 transition">Batal</button>
+                    <button type="submit" class="py-2.5 bg-teal-600 hover:bg-teal-700 font-semibold rounded-lg text-sm text-white shadow transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> Simpan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- EDIT STUDENT MASTER MODAL -->
+    <div id="modal-edit-student-master" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-slate-800">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div>
+                    <h3 id="student-modal-title" class="font-bold text-base text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-user-graduate text-teal-600"></i> Tambah / Edit Siswa
+                    </h3>
+                </div>
+                <button onclick="closeEditStudentMasterModal()" class="text-slate-400 hover:text-slate-600 text-lg w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-edit-student-master" onsubmit="saveMasterStudent(event)" class="space-y-3">
+                <input type="hidden" id="student-edit-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Lengkap *</label>
+                    <input type="text" id="student-name" required placeholder="Contoh: Ahmad Rizky Pratama" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Kelas *</label>
+                        <select id="student-class-id" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Nomor Absen *</label>
+                        <input type="number" id="student-no" min="1" max="99" required placeholder="Contoh: 5" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-2">
+                    <button type="button" onclick="closeEditStudentMasterModal()" class="py-2.5 bg-slate-200 hover:bg-slate-300 font-semibold rounded-lg text-sm text-slate-700 transition">Batal</button>
+                    <button type="submit" class="py-2.5 bg-teal-600 hover:bg-teal-700 font-semibold rounded-lg text-sm text-white shadow transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> Simpan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- BULK STUDENT MODAL -->
+    <div id="modal-bulk-student" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-slate-800 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div>
+                    <h3 class="font-bold text-base text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-list-ol text-teal-600"></i> Input Cepat Siswa Massal
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Pilih kelas, masukkan daftar nama (satu per baris). Absen otomatis.</p>
+                </div>
+                <button onclick="closeBulkStudentModal()" class="text-slate-400 hover:text-slate-600 text-lg w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-bulk-student" onsubmit="saveBulkStudents(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Kelas Tujuan *</label>
+                    <select id="bulk-class-id" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Daftar Nama (satu per baris) *</label>
+                    <textarea id="bulk-names" required rows="10" placeholder="Ahmad Rizky Pratama&#10;Budi Santoso&#10;Citra Lestari&#10;..." class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500 outline-none font-mono"></textarea>
+                    <p class="text-[11px] text-slate-500 mt-1">Nomor absen akan diurutkan otomatis.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-2">
+                    <button type="button" onclick="closeBulkStudentModal()" class="py-2.5 bg-slate-200 hover:bg-slate-300 font-semibold rounded-lg text-sm text-slate-700 transition">Batal</button>
+                    <button type="submit" class="py-2.5 bg-teal-600 hover:bg-teal-700 font-semibold rounded-lg text-sm text-white shadow transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Tambahkan Semua
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================================================
+           1. DATA SOAL DEFAULT (35 Butir)
+           ========================================================================== */
+        let questions = [
+            { id: 1, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Enzim merupakan biomolekul yang berperan sebagai katalis biologis dalam berbagai reaksi metabolisme. Enzim sebagian besar tersusun atas molekul protein.<br><br>Komponen utama penyusun enzim adalah ....', options: ['A. Karbohidrat kompleks','B. Asam nukleat','C. Lipid','D. Protein dengan sisi aktif tertentu','E. Mineral anorganik'], answer: 'D', pembahasan: 'Enzim tersusun dari protein (apoenzim) yang memiliki sisi aktif.' },
+            { id: 2, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Aktivitas enzim menurun tajam setelah suhu optimum karena ....', options: ['A. substrat habis','B. enzim mengalami denaturasi','C. energi aktivasi meningkat','D. produk menghambat reaksi','E. kofaktor mengikat substrat'], answer: 'B', pembahasan: 'Suhu di atas optimum menyebabkan ikatan hidrogen terputus (denaturasi).' },
+            { id: 3, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Penyebab laju reaksi tidak meningkat pada konsentrasi substrat sangat tinggi adalah ....', options: ['A. Sebagian substrat berubah jadi inhibitor','B. Semua sisi aktif enzim telah terikat substrat','C. Enzim mengalami denaturasi','D. Energi aktivasi meningkat','E. Frekuensi tumbukan berkurang'], answer: 'B', pembahasan: 'Titik kejenuhan enzim: seluruh sisi aktif sudah terikat substrat.' },
+            { id: 4, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Bagian enzim tempat menempelnya substrat disebut ....', options: ['A. koenzim','B. inhibitor','C. sisi aktif','D. produk','E. apoenzim'], answer: 'C', pembahasan: 'Sisi aktif adalah lekukan khusus tempat substrat menempel.' },
+            { id: 5, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Penambahan jumlah enzim meningkatkan laju reaksi karena ....', options: ['A. Jumlah sisi aktif bertambah','B. Energi aktivasi meningkat','C. Produk menjadi substrat','D. Tidak berpengaruh','E. Pati berubah jadi enzim'], answer: 'A', pembahasan: 'Semakin banyak enzim, semakin banyak sisi aktif yang tersedia.' },
+            { id: 6, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Organel tempat berlangsungnya fotosintesis adalah ....', options: ['A. Mitokondria','B. Ribosom','C. Kloroplas','D. Badan Golgi','E. Retikulum endoplasma'], answer: 'C', pembahasan: 'Kloroplas mengandung klorofil sebagai tempat fotosintesis.' },
+            { id: 7, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Pada reaksi terang fotosintesis yang dihasilkan adalah ....', options: ['A. ATP, NADPH dan Oksigen','B. Glukosa, ATP, Oksigen','C. NADH, FADH, ATP','D. Piruvat, Asetil KoA','E. Etanol, asam laktat'], answer: 'A', pembahasan: 'Reaksi terang menghasilkan ATP, NADPH, dan O₂ dari fotolisis air.' },
+            { id: 8, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Siklus Calvin berlangsung pada bagian kloroplas bernama ....', options: ['A. Grana','B. Tilakoid','C. Membran','D. Stroma','E. Klorofil'], answer: 'D', pembahasan: 'Siklus Calvin (reaksi gelap) berlangsung di Stroma.' },
+            { id: 9, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Gas O₂ yang dihasilkan fotosintesis berasal dari ....', options: ['A. Pemecahan molekul air (fotolisis)','B. Pengubahan CO₂ menjadi glukosa','C. Penguraian glukosa','D. Pengikatan nitrogen','E. Pemecahan senyawa organik'], answer: 'A', pembahasan: 'O₂ berasal dari fotolisis air pada reaksi terang (Ruben & Kamen).' },
+            { id: 10, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Faktor yang paling membatasi laju fotosintesis pada kondisi cahaya tinggi tapi CO₂ rendah adalah ....', options: ['A. Intensitas cahaya rendah','B. Aktivitas enzim meningkat','C. Jumlah klorofil meningkat','D. Produksi oksigen meningkat','E. Konsentrasi CO₂ rendah'], answer: 'E', pembahasan: 'CO₂ rendah menghambat pembentukan glukosa di Siklus Calvin.' },
+            { id: 11, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Bahan baku utama fotosintesis adalah ....', options: ['A. O₂ dan CO₂','B. Air dan oksigen','C. CO₂ dan air','D. Glukosa dan oksigen','E. Nitrogen dan CO₂'], answer: 'C', pembahasan: 'Persamaan: 6CO₂ + 6H₂O → C₆H₁₂O₆ + 6O₂.' },
+            { id: 12, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Tahap respirasi aerob di sitoplasma adalah ....', options: ['A. Siklus Krebs','B. Rantai transpor elektron','C. Glikolisis','D. Dekarboksilasi oksidatif','E. Fosforilasi oksidatif'], answer: 'C', pembahasan: 'Glikolisis di sitosol: glukosa → 2 piruvat.' },
+            { id: 13, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Organel yang bekerja aktif saat produksi ATP tinggi adalah ....', options: ['A. Kloroplas','B. Mitokondria','C. Ribosom','D. Nukleus','E. Lisosom'], answer: 'B', pembahasan: 'Mitokondria = powerhouse of the cell.' },
+            { id: 14, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Dampak gangguan mitokondria adalah ....', options: ['A. Produksi ATP menurun','B. Produksi glukosa meningkat','C. Fotosintesis meningkat','D. Sintesis protein berhenti','E. Fermentasi ATP lebih banyak'], answer: 'A', pembahasan: 'Rantai transpor elektron terganggu → ATP turun drastis.' },
+            { id: 15, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Setelah lari sprint, tubuh meningkatkan frekuensi pernapasan untuk ....', options: ['A. Pemulihan dari metabolisme anaerob','B. Menghentikan respirasi aerob','C. Fotosintesis','D. Siklus Calvin','E. Mengurangi O₂'], answer: 'A', pembahasan: 'Oxygen debt: mengoksidasi asam laktat pasca-olahraga.' },
+            { id: 16, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Tahapan respirasi yang menghasilkan ATP paling banyak adalah ....', options: ['A. glikolisis','B. siklus Krebs','C. rantai transpor elektron','D. dekarboksilasi','E. fermentasi'], answer: 'C', pembahasan: 'RTE menghasilkan 32-34 ATP.' },
+            { id: 17, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Mengapa pasokan O₂ rendah menghentikan respirasi aerob?', options: ['A. O₂ dibutuhkan di glikolisis','B. O₂ akseptor elektron terakhir di RTE','C. O₂ ubah ATP jadi ADP','D. O₂ ubah piruvat jadi glukosa','E. O₂ aktifkan fotosintesis'], answer: 'B', pembahasan: 'O₂ sebagai akseptor elektron terakhir di membran dalam mitokondria.' },
+            { id: 18, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Siklus Krebs berlangsung di ....', options: ['A. Membran luar','B. Membran dalam','C. Matriks mitokondria','D. Krista','E. Ruang antarmembran'], answer: 'C', pembahasan: 'Siklus Krebs di matriks mitokondria.' },
+            { id: 19, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Pada kekurangan O₂, sel otot mengubah piruvat menjadi ....', options: ['A. asam laktat','B. etanol','C. asam asetat','D. glukosa','E. CO₂'], answer: 'A', pembahasan: 'Fermentasi asam laktat untuk regenerasi NAD⁺.' },
+            { id: 20, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Ciri utama respirasi anaerob adalah ....', options: ['A. Butuh oksigen','B. Tanpa oksigen','C. Lewat fotosintesis','D. ATP paling banyak','E. Ubah CO₂ jadi glukosa'], answer: 'B', pembahasan: 'Anaerob = tanpa O₂.' },
+            { id: 21, type: 'BS', section: 'Benar / Salah', points: 2, question: 'Bagian daun yang ditutup foil akan menghasilkan lebih banyak amilum.', options: ['BENAR','SALAH'], answer: 'SALAH', pembahasan: 'Tanpa cahaya, fotosintesis tidak terjadi (uji iodin negatif).' },
+            { id: 22, type: 'BS', section: 'Benar / Salah', points: 2, question: 'O₂ yang dilepas fotosintesis berasal dari CO₂.', options: ['BENAR','SALAH'], answer: 'SALAH', pembahasan: 'O₂ berasal dari fotolisis air, bukan CO₂.' },
+            { id: 23, type: 'BS', section: 'Benar / Salah', points: 2, question: 'Tanaman dengan klorofil banyak belum tentu fotosintesis lebih tinggi.', options: ['BENAR','SALAH'], answer: 'BENAR', pembahasan: 'Faktor pembatas (CO₂, air, suhu) juga berpengaruh.' },
+            { id: 24, type: 'BS', section: 'Benar / Salah', points: 2, question: 'Grana adalah tempat reaksi terang fotosintesis.', options: ['BENAR','SALAH'], answer: 'BENAR', pembahasan: 'Grana berisi tilakoid dengan fotosistem & klorofil.' },
+            { id: 25, type: 'BS', section: 'Benar / Salah', points: 2, question: 'CO₂ rendah tetap fotosintesis optimal jika cahaya cukup.', options: ['BENAR','SALAH'], answer: 'SALAH', pembahasan: 'CO₂ bahan baku Siklus Calvin; tanpa CO₂, terhenti.' },
+            { id: 26, type: 'BS', section: 'Benar / Salah', points: 2, question: 'ATP & NADPH reaksi terang digunakan di pembentukan karbohidrat.', options: ['BENAR','SALAH'], answer: 'BENAR', pembahasan: 'ATP = energi, NADPH = elektron pada Siklus Calvin.' },
+            { id: 27, type: 'BS', section: 'Benar / Salah', points: 2, question: 'Sel dengan mitokondria lebih banyak potensi ATP lebih tinggi.', options: ['BENAR','SALAH'], answer: 'BENAR', pembahasan: 'Mitokondria lebih banyak = kapasitas ATP lebih tinggi.' },
+            { id: 28, type: 'BS', section: 'Benar / Salah', points: 2, question: 'Respirasi sel adalah pemecahan glukosa untuk hasilkan ATP.', options: ['BENAR','SALAH'], answer: 'BENAR', pembahasan: 'Katabolisme glukosa → ATP.' },
+            { id: 29, type: 'BS', section: 'Benar / Salah', points: 2, question: 'Glikolisis memecah 1 glukosa menjadi 2 piruvat.', options: ['BENAR','SALAH'], answer: 'BENAR', pembahasan: 'Glikolisis: glukosa (6C) → 2 piruvat (3C).' },
+            { id: 30, type: 'BS', section: 'Benar / Salah', points: 2, question: 'Fotosintesis & respirasi saling melengkapi produk satu sama lain.', options: ['BENAR','SALAH'], answer: 'BENAR', pembahasan: 'Fotosintesis hasil O₂+glukosa; respirasi hasil CO₂+H₂O.' },
+            { id: 31, type: 'PGK', section: 'Pilihan Ganda Kompleks', points: 4, question: 'Pilih semua pernyataan BENAR tentang dua tahap fotosintesis:', options: ['A. Tahap I (reaksi terang) hasil ATP, NADPH, O₂','B. Tahap II (Siklus Calvin) hasil glukosa','C. Tahap I butuh energi cahaya','D. Tahap II langsung hasil O₂ dari pemecahan air','E. Tahap II pakai ATP & NADPH'], answer: ['A','B','C','E'], pembahasan: 'D salah: O₂ dihasilkan Tahap I, bukan II.' },
+            { id: 32, type: 'PGK', section: 'Pilihan Ganda Kompleks', points: 4, question: 'Pilih semua kesimpulan TEPAT dari percobaan laju fotosintesis:', options: ['A. CO₂ memengaruhi pembentukan senyawa karbon','B. Cahaya tinggi selalu jamin fotosintesis maksimum','C. Cahaya berperan sebagai energi reaksi terang','D. Cahaya rendah batasi ATP & NADPH','E. CO₂ tidak berhubungan dengan enzim Calvin'], answer: ['A','C','D'], pembahasan: 'B & E salah.' },
+            { id: 33, type: 'PGK', section: 'Pilihan Ganda Kompleks', points: 4, question: 'Tanaman gangguan membran tilakoid. Pilih semua dampak:', options: ['A. ATP & NADPH turun','B. Siklus Calvin terganggu','C. Produksi O₂ meningkat','D. Pembentukan glukosa turun','E. CO₂ tak bisa masuk stomata'], answer: ['A','B','D'], pembahasan: 'Tilakoid rusak → reaksi terang terganggu.' },
+            { id: 34, type: 'PGK', section: 'Pilihan Ganda Kompleks', points: 4, question: 'Pilih semua pasangan produk BENAR dari respirasi aerob:', options: ['A. Glikolisis: piruvat, ATP, NADH','B. Dekarboksilasi: asetil KoA, NADH, CO₂','C. Krebs: ATP, NADH, FADH₂, CO₂','D. Glikolisis hasil CO₂ banyak','E. RTE hasil air dari reduksi O₂'], answer: ['A','B','C','E'], pembahasan: 'D salah: glikolisis tidak hasil CO₂.' },
+            { id: 35, type: 'PGK', section: 'Pilihan Ganda Kompleks', points: 4, question: 'Pilih semua TEPAT tentang respirasi aerob & fermentasi otot:', options: ['A. Aerob hasil ATP lebih banyak','B. Fermentasi hasil asam laktat','C. Aerob hasil CO₂ & air','D. Fermentasi butuh O₂','E. Keduanya diawali glikolisis'], answer: ['A','B','C','E'], pembahasan: 'D salah: fermentasi anaerob (tanpa O₂).' }
+        ];
+
+        /* ==========================================================================
+           2. STATE & KEYS
+           ========================================================================== */
+        const QUESTION_BANK_KEY = 'biologi_question_bank_v3';
+        const ACTIVE_PACKAGE_KEY = 'biologi_active_package_v3';
+        const MASTER_CLASSES_KEY = 'biologi_master_classes_v3';
+        const MASTER_STUDENTS_KEY = 'biologi_master_students_v3';
+        const STORAGE_KEY = 'biologi_exam_attempt_v3';
+        const TEACHER_PASSWORD_KEY = 'guru123';
+
+        const SUPABASE_URL = 'https://uabqumglcxxydsapmvtl.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhYnF1bWdsY3h4eWRzYXBtdnRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExMzIzNzcsImV4cCI6MjEwNjcwODM3N30.x-Bf6_mFBaL78Tg2HV85nqBJgXuqwxxh5eE05KflKbw';
+
+        let questionPackages = [];
+        let activeQuestionPackageId = null;
+        let masterClasses = [];
+        let masterStudents = [];
+
+        let supabaseClient = null;
+        let studentData = { name: '', class: '', no: '' };
+        let userAnswers = {};
+        let userFlags = {};
+        let currentQuestionIndex = 0;
+        let timerInterval = null;
+        let timeLeftSeconds = 90 * 60;
+
+        let allSubmissions = [];
+        let isTeacherLoggedIn = false;
+        let currentTeacherTab = 'packages';
+        let pendingImportedQuestions = null;
+        let isMasterDataSyncing = false; // flag anti-loop
+
+        /* ==========================================================================
+           3. UTILITIES
+           ========================================================================== */
+        function cloneQuestions(data) { return JSON.parse(JSON.stringify(data || [])); }
+        function escapeHtml(v) { return String(v??'').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\'':'&#39;','"':'&quot;'}[c])); }
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+        function safeId(id) { return String(id).replace(/'/g, "\\'"); }
+
+        function setSyncStatus(state, label) {
+            const el = document.getElementById('sync-status');
+            if (!el) return;
+            const dot = el.querySelector('span:first-child');
+            const colors = {
+                online: 'bg-emerald-500',
+                syncing: 'bg-amber-400 animate-pulse',
+                offline: 'bg-slate-400',
+                error: 'bg-rose-500'
+            };
+            dot.className = `w-2 h-2 rounded-full ${colors[state] || colors.offline}`;
+            el.lastChild.textContent = ' ' + (label || state);
+        }
+
+        /* ==========================================================================
+           4. INIT DATA (Local Storage)
+           ========================================================================== */
+        function ensureData() {
+            // Load packages
+            try {
+                const saved = JSON.parse(localStorage.getItem(QUESTION_BANK_KEY) || 'null');
+                if (Array.isArray(saved) && saved.length) questionPackages = saved;
+            } catch (e) { console.warn('Bank soal rusak:', e); }
+
+            if (!questionPackages.length) {
+                const id = 'default-' + Date.now();
+                questionPackages = [{
+                    id,
+                    metadata: {
+                        examName: 'Ulangan Harian Biologi XI',
+                        grade: 'XI',
+                        subject: 'Biologi',
+                        material: 'Bioproses Sel',
+                        duration: 90,
+                        kkm: 75,
+                        academicYear: '2026/2027'
+                    },
+                    createdAt: new Date().toISOString(),
+                    questions: cloneQuestions(questions)
+                }];
+                activeQuestionPackageId = id;
+                persistQuestionPackages();
+            }
+
+            const savedActive = localStorage.getItem(ACTIVE_PACKAGE_KEY);
+            if (savedActive && questionPackages.some(p => p.id === savedActive)) activeQuestionPackageId = savedActive;
+            if (!activeQuestionPackageId || !questionPackages.some(p => p.id === activeQuestionPackageId)) {
+                activeQuestionPackageId = questionPackages[0].id;
+            }
+
+            const active = questionPackages.find(p => p.id === activeQuestionPackageId);
+            if (active && Array.isArray(active.questions)) questions = cloneQuestions(active.questions);
+            userAnswers = {}; userFlags = {}; currentQuestionIndex = 0;
+
+            // Load master classes
+            try {
+                const saved = JSON.parse(localStorage.getItem(MASTER_CLASSES_KEY) || 'null');
+                if (Array.isArray(saved) && saved.length) masterClasses = saved;
+            } catch (e) {}
+            if (!masterClasses.length) {
+                masterClasses = [];
+                ['X','XI','XII'].forEach(g => {
+                    for (let i = 1; i <= 6; i++) {
+                        masterClasses.push({ id: `cls-${g.toLowerCase()}-${i}-${Date.now()}`, grade: g, name: `${g}-${i}` });
+                    }
+                });
+                persistMasterData();
+            }
+
+            // Load master students
+            try {
+                const saved = JSON.parse(localStorage.getItem(MASTER_STUDENTS_KEY) || 'null');
+                if (Array.isArray(saved)) masterStudents = saved;
+            } catch (e) {}
+        }
+
+        function persistQuestionPackages() {
+            localStorage.setItem(QUESTION_BANK_KEY, JSON.stringify(questionPackages));
+            localStorage.setItem(ACTIVE_PACKAGE_KEY, activeQuestionPackageId || '');
+        }
+        function persistMasterData() {
+            localStorage.setItem(MASTER_CLASSES_KEY, JSON.stringify(masterClasses));
+            localStorage.setItem(MASTER_STUDENTS_KEY, JSON.stringify(masterStudents));
+        }
+
+        function getActivePackage() {
+            return questionPackages.find(p => p.id === activeQuestionPackageId) || questionPackages[0] || null;
+        }
+
+        /* ==========================================================================
+           5. CLOUD SYNC - MASTER CLASSES & STUDENTS  ★★★ (FITUR BARU)
+           ========================================================================== */
+        async function syncMasterClassesToCloud() {
+            if (!supabaseClient) return;
+            setSyncStatus('syncing', 'Sinkronisasi Kelas...');
+            try {
+                const payload = masterClasses.map(c => ({
+                    id: c.id,
+                    grade: c.grade,
+                    name: c.name,
+                    updated_at: new Date().toISOString()
+                }));
+                const { error } = await supabaseClient
+                    .from('master_classes')
+                    .upsert(payload, { onConflict: 'id' });
+                if (error) throw error;
+                setSyncStatus('online', 'Tersinkron Cloud');
+            } catch (err) {
+                console.error('Sync master_classes gagal:', err);
+                setSyncStatus('error', 'Sinkron Gagal');
+            }
+        }
+
+        async function syncMasterStudentsToCloud() {
+            if (!supabaseClient) return;
+            setSyncStatus('syncing', 'Sinkronisasi Siswa...');
+            try {
+                const payload = masterStudents.map(s => ({
+                    id: s.id,
+                    name: s.name,
+                    class_id: s.classId,
+                    no: String(s.no),
+                    updated_at: new Date().toISOString()
+                }));
+                const { error } = await supabaseClient
+                    .from('master_students')
+                    .upsert(payload, { onConflict: 'id' });
+                if (error) throw error;
+                setSyncStatus('online', 'Tersinkron Cloud');
+            } catch (err) {
+                console.error('Sync master_students gagal:', err);
+                setSyncStatus('error', 'Sinkron Gagal');
+            }
+        }
+
+        async function deleteMasterClassFromCloud(id) {
+            if (!supabaseClient) return;
+            try {
+                await supabaseClient.from('master_students').delete().eq('class_id', id);
+                await supabaseClient.from('master_classes').delete().eq('id', id);
+            } catch (err) { console.error('Cloud delete class gagal:', err); }
+        }
+
+        async function deleteMasterStudentFromCloud(id) {
+            if (!supabaseClient) return;
+            try {
+                await supabaseClient.from('master_students').delete().eq('id', id);
+            } catch (err) { console.error('Cloud delete student gagal:', err); }
+        }
+
+        async function loadMasterDataFromCloud() {
+            if (!supabaseClient || isMasterDataSyncing) return;
+            isMasterDataSyncing = true;
+            setSyncStatus('syncing', 'Memuat dari Cloud...');
+            try {
+                const [classResult, studentResult] = await Promise.all([
+                    supabaseClient.from('master_classes').select('*'),
+                    supabaseClient.from('master_students').select('*')
+                ]);
+
+                let changed = false;
+                if (classResult.data && classResult.data.length) {
+                    const cloudClasses = classResult.data.map(c => ({ id: c.id, grade: c.grade, name: c.name }));
+                    // Merge: prioritaskan cloud jika ada perubahan terbaru
+                    const merged = [...masterClasses];
+                    cloudClasses.forEach(cc => {
+                        const idx = merged.findIndex(m => m.id === cc.id);
+                        if (idx === -1) merged.push(cc);
+                        else merged[idx] = cc;
+                    });
+                    // Hapus yang di-cloud-delete (jika local punya tapi cloud tidak)
+                    const cloudIds = cloudClasses.map(c => c.id);
+                    const filtered = merged.filter(m => cloudIds.includes(m.id) || !classResult.data.some(d => d.id === m.id));
+                    masterClasses = filtered;
+                    changed = true;
+                }
+
+                if (studentResult.data) {
+                    const cloudStudents = studentResult.data.map(s => ({
+                        id: s.id, name: s.name, classId: s.class_id, no: s.no
+                    }));
+                    const cloudIds = cloudStudents.map(s => s.id);
+                    // Hanya ambil dari cloud, local yang tidak ada di cloud dianggap dihapus dari perangkat lain
+                    masterStudents = cloudStudents;
+                    changed = true;
+                }
+
+                if (changed) {
+                    persistMasterData();
+                    updateDynamicUI();
+                    if (isTeacherLoggedIn) {
+                        renderMasterClasses();
+                        renderMasterStudents();
+                    }
+                }
+                setSyncStatus('online', 'Tersinkron Cloud');
+            } catch (err) {
+                console.error('Load master data gagal:', err);
+                setSyncStatus('error', 'Gagal Memuat Cloud');
+            } finally {
+                isMasterDataSyncing = false;
+            }
+        }
+
+        async function initMasterDataSync() {
+            await loadMasterDataFromCloud();
+            if (!supabaseClient) return;
+            // Realtime sync - ketika ada perubahan dari perangkat lain
+            supabaseClient
+                .channel('master_data_sync')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'master_classes' }, (payload) => {
+                    console.log('Realtime master_classes:', payload);
+                    loadMasterDataFromCloud();
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'master_students' }, (payload) => {
+                    console.log('Realtime master_students:', payload);
+                    loadMasterDataFromCloud();
+                })
+                .subscribe();
+        }
+
+        /* ==========================================================================
+           6. DYNAMIC UI UPDATE
+           ========================================================================== */
+        function updateDynamicUI() {
+            const pack = getActivePackage();
+            if (!pack) return;
+            const m = pack.metadata || {};
+
+            document.getElementById('header-title').textContent = (m.examName || 'PORTAL UJIAN').toUpperCase();
+            document.getElementById('header-subtitle').textContent =
+                `Materi: ${m.material || '-'} • Kelas ${m.grade || '-'} • TA ${m.academicYear || '-'}`;
+            document.title = `${m.examName || 'Portal Ujian'} - ${m.material || ''}`;
+
+            document.getElementById('start-screen-title').textContent = m.examName || 'Portal Ujian';
+            document.getElementById('info-pill-grade').innerHTML = `<i class="fa-solid fa-layer-group mr-1"></i>Kelas: ${m.grade || '-'}`;
+            document.getElementById('info-pill-subject').innerHTML = `<i class="fa-solid fa-book mr-1"></i>Mapel: ${m.subject || '-'}`;
+            document.getElementById('info-pill-material').innerHTML = `<i class="fa-solid fa-flask mr-1"></i>Materi: ${m.material || '-'}`;
+            document.getElementById('info-pill-duration').innerHTML = `<i class="fa-regular fa-clock mr-1"></i>Durasi: ${m.duration || 0} menit`;
+            document.getElementById('info-pill-kkm').innerHTML = `<i class="fa-solid fa-bullseye mr-1"></i>KKM: ${m.kkm || 0}`;
+
+            timeLeftSeconds = (Number(m.duration) || 90) * 60;
+            document.getElementById('timer-count').textContent = formatTime(timeLeftSeconds);
+
+            const filteredClasses = masterClasses
+                .filter(c => c.grade === m.grade)
+                .sort((a, b) => a.name.localeCompare(b.name, 'id'));
+
+            const inputClass = document.getElementById('input-class');
+            inputClass.innerHTML = '<option value="">-- Pilih Kelas --</option>' +
+                filteredClasses.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+
+            const editClass = document.getElementById('edit-class');
+            editClass.innerHTML = filteredClasses.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+
+            const filterClass = document.getElementById('filter-class');
+            filterClass.innerHTML = '<option value="ALL">Semua Kelas</option>' +
+                filteredClasses.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+
+            updateQuestionCountLabels();
+            document.getElementById('result-banner-title').textContent = `Hasil ${m.examName || 'Ujian'}`;
+
+            if (isTeacherLoggedIn) {
+                renderQuestionPackages();
+                renderActivePackageHighlight();
+            }
+        }
+
+        function updateQuestionCountLabels() {
+            const total = questions.length;
+            const pg = questions.filter(q => q.type === 'PG').length;
+            const bs = questions.filter(q => q.type === 'BS').length;
+            const pgk = questions.filter(q => q.type === 'PGK').length;
+            const points = questions.reduce((sum,q) => sum + Number(q.points || 0), 0);
+            const pack = getActivePackage();
+            const kkm = pack?.metadata?.kkm || 75;
+            const maxPG = questions.filter(q=>q.type==='PG').reduce((s,q)=>s+q.points,0);
+            const maxBS = questions.filter(q=>q.type==='BS').reduce((s,q)=>s+q.points,0);
+            const maxPGK = questions.filter(q=>q.type==='PGK').reduce((s,q)=>s+q.points,0);
+
+            const rules = document.getElementById('exam-rules');
+            if (rules) {
+                rules.innerHTML =
+                    `<li><strong>Jumlah Soal:</strong> ${total} Butir (3 Bagian)</li>` +
+                    `<li><strong>Bagian 1:</strong> ${pg} Pilihan Ganda (Skor maks: ${maxPG})</li>` +
+                    `<li><strong>Bagian 2:</strong> ${bs} Benar/Salah (Skor maks: ${maxBS})</li>` +
+                    `<li><strong>Bagian 3:</strong> ${pgk} Pilihan Ganda Kompleks (Skor maks: ${maxPGK})</li>` +
+                    `<li><strong>Total Poin:</strong> ${points} • KKM: ${kkm} • Tidak ada pengurangan nilai.</li>` +
+                    `<li><strong>Kesempatan:</strong> Setiap siswa hanya dapat mengerjakan <strong>1 Kali</strong>.</li>`;
+            }
+        }
+
+        /* ==========================================================================
+           7. QUESTION PACKAGES
+           ========================================================================== */
+        function renderActivePackageHighlight() {
+            const container = document.getElementById('active-package-highlight');
+            if (!container) return;
+            const pack = getActivePackage();
+            if (!pack) { container.innerHTML = ''; return; }
+            const m = pack.metadata || {};
+            const total = (pack.questions || []).length;
+            const points = (pack.questions || []).reduce((s,q) => s + Number(q.points||0), 0);
+
+            container.innerHTML = `
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="bg-amber-400 text-amber-950 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">PAKET AKTIF</span>
+                            <span class="text-xs text-teal-200">Dipakai Portal Siswa sekarang</span>
+                        </div>
+                        <h3 class="text-xl font-bold">${escapeHtml(m.examName || '-')}</h3>
+                        <div class="flex flex-wrap gap-2 mt-2 text-[11px]">
+                            <span class="bg-white/10 px-2 py-1 rounded">Kelas ${escapeHtml(m.grade || '-')}</span>
+                            <span class="bg-white/10 px-2 py-1 rounded">${escapeHtml(m.subject || '-')}</span>
+                            <span class="bg-white/10 px-2 py-1 rounded">${escapeHtml(m.material || '-')}</span>
+                            <span class="bg-white/10 px-2 py-1 rounded">${m.duration || 0} menit</span>
+                            <span class="bg-white/10 px-2 py-1 rounded">KKM: ${m.kkm || 0}</span>
+                            <span class="bg-white/10 px-2 py-1 rounded">TA ${escapeHtml(m.academicYear || '-')}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-3xl font-black">${total}</p>
+                        <p class="text-xs text-teal-200">Soal • ${points} poin</p>
+                        <button onclick="openEditPackageMetadataModal('${safeId(pack.id)}')" class="mt-2 px-3 py-1.5 bg-white text-teal-700 text-xs font-bold rounded-lg hover:bg-teal-50 transition">
+                            <i class="fa-solid fa-pen"></i> Edit Metadata
+                        </button>
+                    </div>
+                </div>`;
+        }
+
+        function renderQuestionPackages() {
+            const list = document.getElementById('question-package-list');
+            if (!list) return;
+            list.innerHTML = questionPackages.map(p => {
+                const m = p.metadata || {};
+                const totalPoints = (p.questions||[]).reduce((s,q)=>s+Number(q.points||0),0);
+                const active = p.id === activeQuestionPackageId;
+                const sid = safeId(p.id);
+                return `<div class="rounded-xl border ${active?'border-teal-400 bg-teal-50':'border-slate-200 bg-slate-50'} p-4">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <p class="font-bold text-sm text-slate-800">${escapeHtml(m.examName || p.name)}</p>
+                            <p class="text-[11px] text-slate-500 mt-1">${escapeHtml(m.material || '')} • Kelas ${escapeHtml(m.grade || '-')}</p>
+                        </div>
+                        ${active?'<span class="text-[10px] font-bold bg-teal-600 text-white px-2 py-1 rounded-full">AKTIF</span>':''}
+                    </div>
+                    <div class="flex flex-wrap gap-1 mt-3 text-[10px]">
+                        <span class="bg-white border border-slate-200 px-1.5 py-0.5 rounded">${escapeHtml(m.subject || '-')}</span>
+                        <span class="bg-white border border-slate-200 px-1.5 py-0.5 rounded">${m.duration || 0} min</span>
+                        <span class="bg-white border border-slate-200 px-1.5 py-0.5 rounded">KKM ${m.kkm || 0}</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-slate-600 mt-3">
+                        <span><i class="fa-solid fa-list-ol mr-1"></i>${(p.questions||[]).length} soal</span>
+                        <span><i class="fa-solid fa-star mr-1"></i>${totalPoints} poin</span>
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        <button onclick="activateQuestionPackage('${sid}')" class="flex-1 px-2.5 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold">
+                            <i class="fa-solid fa-check mr-1"></i> Gunakan
+                        </button>
+                        <button onclick="openEditPackageMetadataModal('${sid}')" class="px-3 py-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-semibold" title="Edit Metadata">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="deleteQuestionPackage('${sid}')" class="px-3 py-2 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-semibold" title="Hapus Paket">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function activateQuestionPackage(id) {
+            const pack = questionPackages.find(p => p.id === id);
+            if (!pack) return;
+            if (localStorage.getItem(STORAGE_KEY) && !confirm('Ada pengerjaan tersimpan. Mengganti paket akan memulai konteks ujian baru. Lanjutkan?')) {
+                renderQuestionPackages(); return;
+            }
+            localStorage.removeItem(STORAGE_KEY);
+            activeQuestionPackageId = id;
+            questions = cloneQuestions(pack.questions);
+            userAnswers = {}; userFlags = {}; currentQuestionIndex = 0;
+            persistQuestionPackages();
+            updateDynamicUI();
+            renderQuestionPackages();
+            renderActivePackageHighlight();
+            alert(`Paket aktif: ${pack.metadata?.examName || pack.name}\n${questions.length} soal siap digunakan.`);
+        }
+
+        function deleteQuestionPackage(id) {
+            if (questionPackages.length <= 1) return alert('Minimal harus ada satu paket soal.');
+            const pack = questionPackages.find(p=>p.id===id);
+            if (!pack || !confirm(`Hapus paket "${pack.metadata?.examName || pack.name}"?`)) return;
+            questionPackages = questionPackages.filter(p=>p.id!==id);
+            if (id === activeQuestionPackageId) {
+                activeQuestionPackageId = questionPackages[0].id;
+                questions = cloneQuestions(questionPackages[0].questions || []);
+                updateDynamicUI();
+            }
+            persistQuestionPackages(); renderQuestionPackages(); renderActivePackageHighlight();
+        }
+
+        /* ==========================================================================
+           8. PACKAGE METADATA MODAL
+           ========================================================================== */
+        function openCreatePackageModal() {
+            document.getElementById('package-modal-title').innerHTML = '<i class="fa-solid fa-box text-teal-600"></i> Buat Paket Ujian Baru';
+            document.getElementById('pkg-edit-id').value = '';
+            document.getElementById('pkg-exam-name').value = '';
+            document.getElementById('pkg-grade').value = 'XI';
+            document.getElementById('pkg-subject').value = 'Biologi';
+            document.getElementById('pkg-material').value = '';
+            document.getElementById('pkg-duration').value = 90;
+            document.getElementById('pkg-kkm').value = 75;
+            document.getElementById('pkg-academic-year').value = '2026/2027';
+            const modal = document.getElementById('modal-package-metadata');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+
+        function openEditPackageMetadataModal(id) {
+            const pack = questionPackages.find(p => p.id === id);
+            if (!pack) return;
+            document.getElementById('package-modal-title').innerHTML = '<i class="fa-solid fa-pen text-teal-600"></i> Edit Metadata Paket';
+            document.getElementById('pkg-edit-id').value = id;
+            const m = pack.metadata || {};
+            document.getElementById('pkg-exam-name').value = m.examName || '';
+            document.getElementById('pkg-grade').value = m.grade || 'XI';
+            document.getElementById('pkg-subject').value = m.subject || 'Biologi';
+            document.getElementById('pkg-material').value = m.material || '';
+            document.getElementById('pkg-duration').value = m.duration || 90;
+            document.getElementById('pkg-kkm').value = m.kkm || 75;
+            document.getElementById('pkg-academic-year').value = m.academicYear || '2026/2027';
+            const modal = document.getElementById('modal-package-metadata');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+
+        function closePackageMetadataModal() {
+            const modal = document.getElementById('modal-package-metadata');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+
+        function savePackageMetadata(e) {
+            e.preventDefault();
+            const id = document.getElementById('pkg-edit-id').value;
+            const metadata = {
+                examName: document.getElementById('pkg-exam-name').value.trim(),
+                grade: document.getElementById('pkg-grade').value,
+                subject: document.getElementById('pkg-subject').value.trim(),
+                material: document.getElementById('pkg-material').value.trim(),
+                duration: Number(document.getElementById('pkg-duration').value) || 90,
+                kkm: Number(document.getElementById('pkg-kkm').value) || 75,
+                academicYear: document.getElementById('pkg-academic-year').value.trim()
+            };
+
+            if (id) {
+                const pack = questionPackages.find(p => p.id === id);
+                if (pack) {
+                    pack.metadata = metadata;
+                    if (id === activeQuestionPackageId) updateDynamicUI();
+                }
+                alert('Metadata paket berhasil diperbarui!');
+                pendingImportedQuestions = null;
+            } else {
+                const newId = 'pkg-' + Date.now();
+                questionPackages.push({ id: newId, metadata, createdAt: new Date().toISOString(), questions: pendingImportedQuestions || [] });
+                activeQuestionPackageId = newId;
+                questions = cloneQuestions(pendingImportedQuestions || []);
+                userAnswers = {}; userFlags = {}; currentQuestionIndex = 0;
+                localStorage.removeItem(STORAGE_KEY);
+                updateDynamicUI();
+                alert(`Paket "${metadata.examName}" berhasil dibuat dengan ${questions.length} soal!`);
+                pendingImportedQuestions = null;
+            }
+            persistQuestionPackages();
+            renderQuestionPackages();
+            renderActivePackageHighlight();
+            closePackageMetadataModal();
+        }
+
+        /* ==========================================================================
+           9. IMPORT QUESTIONS
+           ========================================================================== */
+        function openQuestionImportMenu() {
+            const input = document.getElementById('question-import-file');
+            input.value = ''; input.click();
+        }
+
+        function getQuestionTemplateRows() {
+            return [
+                {id:1,type:'PG',section:'Pilihan Ganda',points:3,question:'Organel tempat respirasi sel?',option_a:'Ribosom',option_b:'Mitokondria',option_c:'Lisosom',option_d:'Badan Golgi',option_e:'Nukleus',answer:'B',pembahasan:'Mitokondria.'},
+                {id:2,type:'BS',section:'Benar / Salah',points:2,question:'Mitokondria punya membran ganda.',option_a:'BENAR',option_b:'SALAH',option_c:'',option_d:'',option_e:'',answer:'A',pembahasan:'Benar.'},
+                {id:3,type:'PGK',section:'Pilihan Ganda Kompleks',points:4,question:'Pilih benar tentang glikolisis.',option_a:'Sitoplasma',option_b:'Piruvat',option_c:'Butuh O₂',option_d:'NADH',option_e:'ATP bersih',answer:'A,B,D,E',pembahasan:'Tanpa O₂.'}
+            ];
+        }
+
+        function downloadQuestionTemplateExcel() {
+            if (!window.XLSX) return alert('Library Excel belum tersedia.');
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(getQuestionTemplateRows()), 'Template Soal');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['PETUNJUK'],['type','PG/BS/PGK'],['answer','huruf atau koma']]), 'Petunjuk');
+            XLSX.writeFile(wb, 'Template_Bank_Soal.xlsx');
+        }
+
+        async function downloadQuestionTemplateWord() {
+            if (!window.docx) return alert('Library Word belum tersedia.');
+            const { Document, Packer, Paragraph, TextRun, HeadingLevel } = window.docx;
+            const rows = getQuestionTemplateRows();
+            const children = [new Paragraph({text:'TEMPLATE BANK SOAL',heading:HeadingLevel.TITLE}),new Paragraph('')];
+            rows.forEach((r,i)=>{
+                children.push(new Paragraph({text:`SOAL ${i+1}`,heading:HeadingLevel.HEADING_1}));
+                children.push(new Paragraph(`Jenis: ${r.type}`));
+                children.push(new Paragraph(`Bagian: ${r.section}`));
+                children.push(new Paragraph(`Poin: ${r.points}`));
+                children.push(new Paragraph(r.question.replace(/<[^>]+>/g,' ')));
+                ['A','B','C','D','E'].forEach(l=>children.push(new Paragraph(`${l}. ${r['option_'+l.toLowerCase()]||''}`)));
+                children.push(new Paragraph(`Jawaban: ${r.answer}`));
+                children.push(new Paragraph(`Pembahasan: ${r.pembahasan}`));
+                children.push(new Paragraph(''));
+            });
+            const doc = new Document({sections:[{properties:{},children}]});
+            const blob = await Packer.toBlob(doc);
+            const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='Template_Bank_Soal.docx'; a.click(); URL.revokeObjectURL(a.href);
+        }
+
+        function normalizeImportedQuestion(raw,index) {
+            const get = (...keys) => { for (const k of keys) { if (raw[k] !== undefined && raw[k] !== null && String(raw[k]).trim()!=='') return String(raw[k]).trim(); } return ''; };
+            let type = get('type','jenis').toUpperCase().replace('PILIHAN GANDA KOMPLEKS','PGK').replace('PILIHAN GANDA','PG').replace('BENAR/SALAH','BS').replace('BENAR SALAH','BS');
+            if (!['PG','BS','PGK'].includes(type)) throw new Error(`Soal ${index}: jenis harus PG/BS/PGK.`);
+            const options=['a','b','c','d','e'].map(l=>get(`option_${l}`,`opsi_${l}`)).map(v=>v.replace(/^[A-E][.)]\s*/i,''));
+            if (type==='BS' && !options[0]) options[0]='BENAR';
+            if (type==='BS' && !options[1]) options[1]='SALAH';
+            if ((type==='PG'||type==='PGK') && options.filter(Boolean).length<2) throw new Error(`Soal ${index}: minimal 2 opsi.`);
+            let answer=get('answer','jawaban','kunci').toUpperCase().replace(/[;|/\s]+/g,',').split(',').map(x=>x.trim()).filter(Boolean);
+            answer=[...new Set(answer.map(x=>x.replace(/[^A-E]/g,'')))];
+            if (!answer.length) throw new Error(`Soal ${index}: jawaban kosong.`);
+            if (type!=='PGK') answer=answer[0];
+            const q=get('question','pertanyaan','soal').replace(/\n/g,'<br>');
+            if (!q) throw new Error(`Soal ${index}: pertanyaan kosong.`);
+            return {id:index,type,section:get('section','bagian')||(type==='PG'?'Pilihan Ganda':type==='BS'?'Benar / Salah':'Pilihan Ganda Kompleks'),points:Number(get('points','poin','bobot'))||1,question:q,options,answer,pembahasan:get('pembahasan','explanation','penjelasan')};
+        }
+
+        function rowsToQuestions(rows) {
+            return rows.filter(r=>Object.values(r).some(v=>String(v??'').trim()!=='')).map((r,i)=>normalizeImportedQuestion(r,i+1));
+        }
+
+        function parseWordText(text) {
+            const blocks=text.split(/\n\s*={3,}\s*\n|\n(?=SOAL\s*\d+)/i).map(x=>x.trim()).filter(Boolean);
+            const rows=[];
+            blocks.forEach((b)=>{
+                if (!/SOAL\s*\d+/i.test(b)) return;
+                const line=(label)=>{ const re=new RegExp('^'+label+'\\s*:?\\s*(.*)$','im'); const m=b.match(re); return m?m[1].trim():''; };
+                const qmatch=b.match(/Pertanyaan\s*:\s*([\s\S]*?)(?=\n\s*A\s*[.)]|\n\s*Jawaban\s*:)/i);
+                const question=qmatch?qmatch[1].trim():'';
+                const opts={};
+                ['A','B','C','D','E'].forEach((l,idx)=>{
+                    const next=['B','C','D','E'][idx]||'Jawaban';
+                    const re=new RegExp('^'+l+'\\s*[.)]\\s*([\\s\\S]*?)(?=\\n\\s*'+next+'\\s*[.)]|\\n\\s*Jawaban\\s*:|$)','im');
+                    const m=b.match(re); opts['option_'+l.toLowerCase()]=m?m[1].trim():'';
+                });
+                rows.push({type:line('Jenis Soal')||'PG',section:line('Bagian'),points:line('Poin')||1,question,...opts,answer:line('Jawaban'),pembahasan:line('Pembahasan')});
+            });
+            return rowsToQuestions(rows);
+        }
+
+        async function importQuestionsFromFile(event) {
+            const file=event.target.files?.[0]; if(!file) return;
+            try {
+                let imported=[];
+                if (/\.docx$/i.test(file.name)) {
+                    if(!window.mammoth) throw new Error('Library Word belum tersedia.');
+                    const result=await mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()});
+                    imported=parseWordText(result.value);
+                } else if (/\.json$/i.test(file.name)) {
+                    const data=JSON.parse(await file.text());
+                    imported=rowsToQuestions(Array.isArray(data)?data:(data.questions||[]));
+                } else {
+                    if(!window.XLSX) throw new Error('Library Excel belum tersedia.');
+                    const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
+                    const ws=wb.Sheets[wb.SheetNames[0]];
+                    imported=rowsToQuestions(XLSX.utils.sheet_to_json(ws,{defval:''}));
+                }
+                if(!imported.length) throw new Error('Tidak menemukan soal valid.');
+
+                pendingImportedQuestions = imported;
+                document.getElementById('package-modal-title').innerHTML = '<i class="fa-solid fa-file-import text-teal-600"></i> Import Soal - Buat Paket Baru';
+                document.getElementById('pkg-edit-id').value = '';
+                document.getElementById('pkg-exam-name').value = file.name.replace(/\.[^.]+$/,'').replace(/_/g,' ');
+                document.getElementById('pkg-grade').value = 'XI';
+                document.getElementById('pkg-subject').value = 'Biologi';
+                document.getElementById('pkg-material').value = '';
+                document.getElementById('pkg-duration').value = 90;
+                document.getElementById('pkg-kkm').value = 75;
+                document.getElementById('pkg-academic-year').value = '2026/2027';
+                const modal = document.getElementById('modal-package-metadata');
+                modal.classList.remove('hidden'); modal.classList.add('flex');
+                alert(`Berhasil parse ${imported.length} soal.\n\nSilakan isi Metadata Paket lalu klik "Simpan Paket".`);
+            } catch(err) { console.error(err); alert('Import gagal: '+err.message); }
+            event.target.value='';
+        }
+
+        /* ==========================================================================
+           10. MASTER CLASSES (WITH CLOUD SYNC)  ★★★ UPDATED
+           ========================================================================== */
+        function renderMasterClasses() {
+            const tbody = document.getElementById('master-classes-tbody');
+            if (!tbody) return;
+            const grouped = {};
+            masterClasses.forEach(c => { if (!grouped[c.grade]) grouped[c.grade] = []; grouped[c.grade].push(c); });
+            let html = ''; let no = 1;
+            ['X','XI','XII'].forEach(grade => {
+                (grouped[grade] || []).sort((a,b) => a.name.localeCompare(b.name)).forEach(c => {
+                    const studentCount = masterStudents.filter(s => s.classId === c.id).length;
+                    const sid = safeId(c.id);
+                    html += `<tr class="hover:bg-slate-50 border-b border-slate-100">
+                        <td class="p-3 text-center font-bold text-slate-400">${no++}</td>
+                        <td class="p-3"><span class="bg-teal-100 text-teal-800 font-medium px-2 py-0.5 rounded text-xs">Kelas ${escapeHtml(c.grade)}</span></td>
+                        <td class="p-3 font-semibold text-slate-800">${escapeHtml(c.name)}</td>
+                        <td class="p-3 text-center text-slate-600">${studentCount} siswa</td>
+                        <td class="p-3 text-center">
+                            <button onclick="openEditClassModal('${sid}')" class="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded text-xs font-bold mr-1" title="Edit"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteMasterClass('${sid}')" class="px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded text-xs font-bold" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+                });
+            });
+            tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-12 text-slate-400"><i class="fa-solid fa-inbox text-3xl mb-2 block"></i>Belum ada data kelas.</td></tr>`;
+        }
+
+        function openCreateClassModal() {
+            document.getElementById('class-modal-title').innerHTML = '<i class="fa-solid fa-school text-teal-600"></i> Tambah Kelas Baru';
+            document.getElementById('class-edit-id').value = '';
+            document.getElementById('class-grade').value = 'XI';
+            document.getElementById('class-name').value = '';
+            const modal = document.getElementById('modal-edit-class');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+
+        function openEditClassModal(id) {
+            const cls = masterClasses.find(c => c.id === id);
+            if (!cls) return;
+            document.getElementById('class-modal-title').innerHTML = '<i class="fa-solid fa-pen text-teal-600"></i> Edit Kelas';
+            document.getElementById('class-edit-id').value = id;
+            document.getElementById('class-grade').value = cls.grade;
+            document.getElementById('class-name').value = cls.name;
+            const modal = document.getElementById('modal-edit-class');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+
+        function closeEditClassModal() {
+            const modal = document.getElementById('modal-edit-class');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+
+        async function saveMasterClass(e) {
+            e.preventDefault();
+            const id = document.getElementById('class-edit-id').value;
+            const grade = document.getElementById('class-grade').value;
+            const name = document.getElementById('class-name').value.trim();
+            if (!name) return;
+            if (id) {
+                const cls = masterClasses.find(c => c.id === id);
+                if (cls) { cls.grade = grade; cls.name = name; }
+                alert('Kelas berhasil diperbarui!');
+            } else {
+                const newId = 'cls-' + Date.now() + '-' + Math.random().toString(36).substr(2,5);
+                masterClasses.push({ id: newId, grade, name });
+                alert('Kelas baru berhasil ditambahkan!');
+            }
+            persistMasterData();
+            renderMasterClasses();
+            updateDynamicUI();
+            closeEditClassModal();
+            // ★ CLOUD SYNC
+            await syncMasterClassesToCloud();
+        }
+
+        async function deleteMasterClass(id) {
+            const cls = masterClasses.find(c => c.id === id);
+            if (!cls) return;
+            const studentCount = masterStudents.filter(s => s.classId === id).length;
+            if (!confirm(`Hapus kelas ${cls.name}?${studentCount > 0 ? `\n\nPERINGATAN: ${studentCount} siswa di kelas ini akan ikut terhapus dari cloud.` : ''}`)) return;
+            // Hapus siswa lokal yang ada di kelas ini
+            masterStudents = masterStudents.filter(s => s.classId !== id);
+            masterClasses = masterClasses.filter(c => c.id !== id);
+            persistMasterData();
+            renderMasterClasses();
+            renderMasterStudents();
+            updateDynamicUI();
+            const sel = document.getElementById('filter-master-student-class');
+            if (sel) {
+                sel.innerHTML = '<option value="ALL">Semua Kelas</option>' + 
+                    masterClasses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            }
+            // ★ CLOUD SYNC (hapus dari cloud)
+            await deleteMasterClassFromCloud(id);
+            await syncMasterStudentsToCloud();
+        }
+
+        /* ==========================================================================
+           11. MASTER STUDENTS (WITH CLOUD SYNC)  ★★★ UPDATED
+           ========================================================================== */
+        function renderMasterStudents() {
+            const tbody = document.getElementById('master-students-tbody');
+            if (!tbody) return;
+            const filterClass = document.getElementById('filter-master-student-class')?.value || 'ALL';
+            const searchQuery = document.getElementById('search-master-student')?.value?.toLowerCase().trim() || '';
+
+            let filtered = masterStudents.filter(s => {
+                const matchClass = filterClass === 'ALL' || s.classId === filterClass;
+                const cls = masterClasses.find(c => c.id === s.classId);
+                const matchSearch = (s.name || '').toLowerCase().includes(searchQuery) || 
+                                    String(s.no || '').includes(searchQuery) ||
+                                    (cls?.name || '').toLowerCase().includes(searchQuery);
+                return matchClass && matchSearch;
+            });
+            filtered.sort((a, b) => {
+                const clsA = masterClasses.find(c => c.id === a.classId)?.name || '';
+                const clsB = masterClasses.find(c => c.id === b.classId)?.name || '';
+                if (clsA !== clsB) return clsA.localeCompare(clsB);
+                return Number(a.no) - Number(b.no);
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-400">
+                    <i class="fa-solid fa-inbox text-3xl mb-2 block"></i>Belum ada data siswa. Klik "Tambah Siswa".
+                </td></tr>`;
+                return;
+            }
+
+            let html = '';
+            filtered.forEach((s, idx) => {
+                const cls = masterClasses.find(c => c.id === s.classId);
+                const sid = safeId(s.id);
+                html += `<tr class="hover:bg-slate-50 border-b border-slate-100">
+                    <td class="p-3 text-center font-bold text-slate-400">${idx + 1}</td>
+                    <td class="p-3 font-semibold text-slate-800">${escapeHtml(s.name)}</td>
+                    <td class="p-3"><span class="bg-slate-100 text-slate-700 font-medium px-2 py-0.5 rounded text-xs">${escapeHtml(cls?.name || 'N/A')}</span></td>
+                    <td class="p-3 text-center font-semibold text-slate-600">${escapeHtml(String(s.no))}</td>
+                    <td class="p-3 text-center text-slate-500 text-xs">${escapeHtml(cls?.grade || '-')}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="openEditStudentMasterModal('${sid}')" class="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded text-xs font-bold mr-1" title="Edit"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteMasterStudent('${sid}')" class="px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded text-xs font-bold" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function openCreateStudentModal() {
+            document.getElementById('student-modal-title').innerHTML = '<i class="fa-solid fa-user-graduate text-teal-600"></i> Tambah Siswa Baru';
+            document.getElementById('student-edit-id').value = '';
+            document.getElementById('student-name').value = '';
+            document.getElementById('student-no').value = '';
+            populateStudentClassDropdown('');
+            const modal = document.getElementById('modal-edit-student-master');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+
+        function openEditStudentMasterModal(id) {
+            const s = masterStudents.find(x => x.id === id);
+            if (!s) return;
+            document.getElementById('student-modal-title').innerHTML = '<i class="fa-solid fa-pen text-teal-600"></i> Edit Siswa';
+            document.getElementById('student-edit-id').value = id;
+            document.getElementById('student-name').value = s.name;
+            document.getElementById('student-no').value = s.no;
+            populateStudentClassDropdown(s.classId);
+            const modal = document.getElementById('modal-edit-student-master');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+
+        function populateStudentClassDropdown(selectedId) {
+            const sel = document.getElementById('student-class-id');
+            const sorted = [...masterClasses].sort((a,b) => {
+                if (a.grade !== b.grade) return ['X','XI','XII'].indexOf(a.grade) - ['X','XI','XII'].indexOf(b.grade);
+                return a.name.localeCompare(b.name);
+            });
+            sel.innerHTML = '<option value="">-- Pilih Kelas --</option>' + 
+                sorted.map(c => `<option value="${c.id}" ${c.id===selectedId?'selected':''}>${c.name} (Kelas ${c.grade})</option>`).join('');
+        }
+
+        function closeEditStudentMasterModal() {
+            const modal = document.getElementById('modal-edit-student-master');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+
+        async function saveMasterStudent(e) {
+            e.preventDefault();
+            const id = document.getElementById('student-edit-id').value;
+            const name = document.getElementById('student-name').value.trim();
+            const classId = document.getElementById('student-class-id').value;
+            const no = document.getElementById('student-no').value.trim();
+            if (!name || !classId || !no) return alert('Semua field wajib diisi!');
+
+            const duplicate = masterStudents.find(s => s.classId === classId && String(s.no) === String(no) && s.id !== id);
+            if (duplicate) {
+                if (!confirm(`Sudah ada "${duplicate.name}" dengan absen sama di kelas ini. Lanjutkan?`)) return;
+            }
+
+            if (id) {
+                const s = masterStudents.find(x => x.id === id);
+                if (s) { s.name = name; s.classId = classId; s.no = no; }
+                alert('Data siswa berhasil diperbarui!');
+            } else {
+                const newId = 'std-' + Date.now() + '-' + Math.random().toString(36).substr(2,5);
+                masterStudents.push({ id: newId, name, classId, no });
+                alert('Siswa baru berhasil ditambahkan!');
+            }
+            persistMasterData();
+            renderMasterStudents();
+            renderMasterClasses();
+            closeEditStudentMasterModal();
+            // ★ CLOUD SYNC
+            await syncMasterStudentsToCloud();
+        }
+
+        async function deleteMasterStudent(id) {
+            const s = masterStudents.find(x => x.id === id);
+            if (!s) return;
+            if (!confirm(`Hapus siswa "${s.name}"?`)) return;
+            masterStudents = masterStudents.filter(x => x.id !== id);
+            persistMasterData();
+            renderMasterStudents();
+            renderMasterClasses();
+            // ★ CLOUD SYNC
+            await deleteMasterStudentFromCloud(id);
+        }
+
+        /* ==========================================================================
+           12. BULK STUDENT INPUT (WITH CLOUD SYNC)  ★★★ UPDATED
+           ========================================================================== */
+        function openBulkStudentModal() {
+            const sel = document.getElementById('bulk-class-id');
+            const sorted = [...masterClasses].sort((a,b) => {
+                if (a.grade !== b.grade) return ['X','XI','XII'].indexOf(a.grade) - ['X','XI','XII'].indexOf(b.grade);
+                return a.name.localeCompare(b.name);
+            });
+            sel.innerHTML = '<option value="">-- Pilih Kelas --</option>' + 
+                sorted.map(c => `<option value="${c.id}">${c.name} (Kelas ${c.grade})</option>`).join('');
+            document.getElementById('bulk-names').value = '';
+            const modal = document.getElementById('modal-bulk-student');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+
+        function closeBulkStudentModal() {
+            const modal = document.getElementById('modal-bulk-student');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+
+        async function saveBulkStudents(e) {
+            e.preventDefault();
+            const classId = document.getElementById('bulk-class-id').value;
+            const namesRaw = document.getElementById('bulk-names').value;
+            if (!classId) return alert('Pilih kelas tujuan dulu!');
+            const names = namesRaw.split('\n').map(n => n.trim()).filter(Boolean);
+            if (!names.length) return alert('Daftar nama kosong!');
+
+            const classStudents = masterStudents.filter(s => s.classId === classId);
+            let startNo = classStudents.reduce((max, s) => Math.max(max, Number(s.no) || 0), 0);
+            let added = 0;
+            names.forEach(name => {
+                startNo++;
+                const newId = 'std-' + Date.now() + '-' + Math.random().toString(36).substr(2,5) + added;
+                masterStudents.push({ id: newId, name, classId, no: String(startNo) });
+                added++;
+            });
+            persistMasterData();
+            renderMasterStudents();
+            renderMasterClasses();
+            closeBulkStudentModal();
+            alert(`${added} siswa berhasil ditambahkan ke kelas!`);
+            // ★ CLOUD SYNC
+            await syncMasterStudentsToCloud();
+        }
+
+        /* ==========================================================================
+           13. AUTOCOMPLETE NAMA SISWA
+           ========================================================================== */
+        function onNameInput() {
+            const val = document.getElementById('input-name').value.trim().toLowerCase();
+            const suggestionsBox = document.getElementById('name-suggestions');
+            if (!val || val.length < 2) { closeNameSuggestions(); return; }
+            const matches = masterStudents.filter(s => s.name.toLowerCase().includes(val)).slice(0, 8);
+            if (!matches.length) { closeNameSuggestions(); return; }
+            suggestionsBox.innerHTML = matches.map(s => {
+                const cls = masterClasses.find(c => c.id === s.classId);
+                return `<button type="button" onclick="selectNameSuggestion('${safeId(s.id)}')" class="w-full text-left px-3 py-2 hover:bg-teal-50 border-b border-slate-100 last:border-0 text-sm">
+                    <span class="font-semibold text-slate-800">${escapeHtml(s.name)}</span>
+                    <span class="ml-2 text-xs text-slate-500">${escapeHtml(cls?.name || '')} • Absen ${escapeHtml(String(s.no))}</span>
+                </button>`;
+            }).join('');
+            suggestionsBox.classList.remove('hidden');
+        }
+
+        function selectNameSuggestion(studentId) {
+            const s = masterStudents.find(x => x.id === studentId);
+            if (!s) return;
+            const cls = masterClasses.find(c => c.id === s.classId);
+            document.getElementById('input-name').value = s.name;
+            if (cls) document.getElementById('input-class').value = cls.name;
+            document.getElementById('input-no').value = s.no;
+            closeNameSuggestions();
+        }
+
+        function closeNameSuggestions() {
+            document.getElementById('name-suggestions').classList.add('hidden');
+        }
+
+        function onClassChange() {
+            const name = document.getElementById('input-name').value.trim().toLowerCase();
+            const cls = document.getElementById('input-class').value;
+            if (!name || !cls) return;
+            const match = masterStudents.find(s => {
+                const studentClass = masterClasses.find(c => c.id === s.classId);
+                return s.name.toLowerCase() === name && studentClass?.name === cls;
+            });
+            if (match) document.getElementById('input-no').value = match.no;
+        }
+
+        function onAbsenInput() {
+            const cls = document.getElementById('input-class').value;
+            const no = document.getElementById('input-no').value.trim();
+            if (!cls || !no) return;
+            const match = masterStudents.find(s => {
+                const studentClass = masterClasses.find(c => c.id === s.classId);
+                return studentClass?.name === cls && String(s.no) === String(no);
+            });
+            if (match && !document.getElementById('input-name').value.trim()) {
+                document.getElementById('input-name').value = match.name;
+            }
+        }
+
+        /* ==========================================================================
+           14. SUPABASE & SUBMISSIONS
+           ========================================================================== */
+        async function initSupabase() {
+            try {
+                if (window.supabase) {
+                    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    setSyncStatus('syncing', 'Menghubungkan...');
+                    await fetchSubmissions();
+                    supabaseClient
+                        .channel('public:submissions')
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'submissions' }, () => { fetchSubmissions(); })
+                        .subscribe();
+                    // ★ Init Master Data Sync (load + realtime)
+                    await initMasterDataSync();
+                    if (!supabaseClient) setSyncStatus('offline', 'Mode Offline');
+                } else {
+                    setSyncStatus('offline', 'Mode Offline');
+                }
+            } catch (err) {
+                console.error("Inisialisasi Supabase gagal:", err);
+                setSyncStatus('error', 'Koneksi Error');
+            }
+        }
+
+        async function fetchSubmissions() {
+            if (!supabaseClient) return;
+            try {
+                const { data, error } = await supabaseClient.from('submissions').select('*');
+                if (error) { console.error("Gagal ambil data:", error); return; }
+                if (data) {
+                    allSubmissions = data.map(item => ({
+                        docId: item.id,
+                        studentData: item.student_data || item.studentData,
+                        userAnswers: item.user_answers || item.userAnswers,
+                        scores: item.scores,
+                        submittedAt: item.submitted_at || item.submittedAt,
+                        packageId: item.package_id
+                    }));
+                    if (isTeacherLoggedIn) renderTeacherDashboard();
+                }
+            } catch (err) { console.error("Error fetchSubmissions:", err); }
+        }
+
+        function checkExistingAttempt() {
+            const savedAttempt = localStorage.getItem(STORAGE_KEY);
+            if (savedAttempt) {
+                try {
+                    const data = JSON.parse(savedAttempt);
+                    studentData = data.studentData || { name: '', class: '', no: '' };
+                    userAnswers = data.userAnswers || {};
+                    showResults(data.scores);
+                } catch (e) { console.error('Error parsing:', e); }
+            }
+        }
+
+        function startExam(e) {
+            e.preventDefault();
+            studentData.name = document.getElementById('input-name').value.trim();
+            studentData.class = document.getElementById('input-class').value;
+            studentData.no = document.getElementById('input-no').value;
+            if (!studentData.name || !studentData.class || !studentData.no) {
+                alert('Mohon lengkapi seluruh data identitas!'); return;
+            }
+
+            const existing = allSubmissions.find(s => 
+                s.studentData && 
+                s.studentData.class === studentData.class && 
+                String(s.studentData.no) === String(studentData.no) &&
+                s.packageId === activeQuestionPackageId
+            );
+            if (existing) {
+                if (confirm(`Siswa ${existing.studentData.name} sudah mengerjakan paket ini dengan skor ${existing.scores?.totalScore || 0}.\n\nKlik OK untuk melihat hasil.`)) {
+                    userAnswers = existing.userAnswers || {};
+                    showResults(existing.scores || { totalScore: 0 });
+                }
+                return;
+            }
+
+            document.getElementById('user-display-name').textContent = studentData.name;
+            document.getElementById('user-display-class').textContent = studentData.class;
+            document.getElementById('user-display-no').textContent = 'Absen: ' + studentData.no;
+            document.getElementById('header-user-info').classList.remove('hidden');
+            document.getElementById('header-user-info').classList.add('flex');
+            document.getElementById('timer-box').classList.remove('hidden');
+            document.getElementById('timer-box').classList.add('flex');
+
+            document.getElementById('screen-start').classList.add('hidden');
+            document.getElementById('screen-teacher').classList.add('hidden');
+            document.getElementById('screen-exam').classList.remove('hidden');
+            document.getElementById('screen-exam').classList.add('grid');
+
+            renderGrid();
+            renderQuestion(0);
+            startTimer();
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeLeftSeconds--;
+                if (timeLeftSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    alert('Waktu ujian habis! Jawaban akan dikumpulkan otomatis.');
+                    submitExam();
+                } else {
+                    document.getElementById('timer-count').textContent = formatTime(timeLeftSeconds);
+                }
+            }, 1000);
+        }
+
+        /* ==========================================================================
+           15. RENDER QUESTION
+           ========================================================================== */
+        function renderQuestion(index) {
+            currentQuestionIndex = index;
+            const q = questions[index];
+            if (!q) return;
+            document.getElementById('q-number-badge').textContent = `Soal #${q.id}`;
+            document.getElementById('q-type-badge').textContent = q.section;
+            document.getElementById('q-points').textContent = `${q.points} Poin`;
+            document.getElementById('q-content').innerHTML = q.question;
+
+            const optionsContainer = document.getElementById('q-options');
+            optionsContainer.innerHTML = '';
+
+            if (q.type === 'PG' || q.type === 'BS') {
+                q.options.forEach(opt => {
+                    const optKey = q.type === 'BS' ? opt : opt.charAt(0);
+                    const isSelected = userAnswers[q.id] === optKey;
+                    const card = document.createElement('label');
+                    card.className = `flex items-center p-3.5 rounded-xl border transition cursor-pointer select-none ${isSelected ? 'bg-teal-50 border-teal-500 text-teal-900 font-medium ring-2 ring-teal-500/20' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`;
+                    card.innerHTML = `<input type="radio" name="q_opt_${q.id}" value="${optKey}" ${isSelected ? 'checked' : ''} onchange="selectOption('${optKey}')" class="w-4 h-4 text-teal-600 focus:ring-teal-500 border-slate-300"><span class="ml-3 text-sm md:text-base">${opt}</span>`;
+                    optionsContainer.appendChild(card);
+                });
+            } else if (q.type === 'PGK') {
+                const selectedArr = userAnswers[q.id] || [];
+                q.options.forEach(opt => {
+                    const optKey = opt.charAt(0);
+                    const isChecked = selectedArr.includes(optKey);
+                    const card = document.createElement('label');
+                    card.className = `flex items-start p-3.5 rounded-xl border transition cursor-pointer select-none ${isChecked ? 'bg-teal-50 border-teal-500 text-teal-900 font-medium ring-2 ring-teal-500/20' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`;
+                    card.innerHTML = `<input type="checkbox" value="${optKey}" ${isChecked ? 'checked' : ''} onchange="togglePGKOption('${optKey}')" class="mt-1 w-4 h-4 text-teal-600 rounded focus:ring-teal-500 border-slate-300"><span class="ml-3 text-sm md:text-base leading-relaxed">${opt}</span>`;
+                    optionsContainer.appendChild(card);
+                });
+            }
+
+            document.getElementById('btn-prev').disabled = index === 0;
+            document.getElementById('btn-prev').classList.toggle('opacity-50', index === 0);
+            document.getElementById('btn-next').disabled = index === questions.length - 1;
+            document.getElementById('btn-next').classList.toggle('opacity-50', index === questions.length - 1);
+
+            const isFlagged = userFlags[q.id];
+            const btnFlag = document.getElementById('btn-flag');
+            if (isFlagged) {
+                btnFlag.className = 'px-4 py-2.5 bg-amber-500 text-white font-semibold rounded-lg text-sm transition flex items-center gap-2';
+                btnFlag.querySelector('i').className = 'fa-solid fa-flag';
+            } else {
+                btnFlag.className = 'px-4 py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-800 font-semibold rounded-lg text-sm transition flex items-center gap-2';
+                btnFlag.querySelector('i').className = 'fa-regular fa-flag';
+            }
+            updateGridButton(index);
+            updateProgressSummary();
+        }
+
+        function selectOption(val) { const q = questions[currentQuestionIndex]; userAnswers[q.id] = val; renderQuestion(currentQuestionIndex); }
+        function togglePGKOption(val) {
+            const q = questions[currentQuestionIndex];
+            let arr = userAnswers[q.id] || [];
+            if (arr.includes(val)) arr = arr.filter(x => x !== val); else arr.push(val);
+            userAnswers[q.id] = arr; renderQuestion(currentQuestionIndex);
+        }
+        function toggleFlag() { const q = questions[currentQuestionIndex]; userFlags[q.id] = !userFlags[q.id]; renderQuestion(currentQuestionIndex); }
+        function navigateQuestion(step) {
+            const nextIdx = currentQuestionIndex + step;
+            if (nextIdx >= 0 && nextIdx < questions.length) renderQuestion(nextIdx);
+        }
+
+        /* ==========================================================================
+           16. GRID & PALETTE
+           ========================================================================== */
+        function renderGrid() {
+            const grid = document.getElementById('question-grid');
+            grid.innerHTML = '';
+            questions.forEach((q, idx) => {
+                const btn = document.createElement('button');
+                btn.id = `grid-btn-${idx}`;
+                btn.onclick = () => renderQuestion(idx);
+                btn.className = getGridBtnClass(idx);
+                btn.textContent = idx + 1;
+                grid.appendChild(btn);
+            });
+        }
+        function getGridBtnClass(idx) {
+            const q = questions[idx];
+            const ans = userAnswers[q.id];
+            const isAnswered = Array.isArray(ans) ? ans.length > 0 : !!ans;
+            const isFlagged = userFlags[q.id];
+            const isCurrent = idx === currentQuestionIndex;
+            let base = "h-9 w-full rounded-lg text-xs font-bold transition flex items-center justify-center border ";
+            if (isCurrent) base += "ring-2 ring-teal-600 ring-offset-1 ";
+            if (isFlagged) return base + "bg-amber-400 text-amber-950 border-amber-500";
+            else if (isAnswered) return base + "bg-teal-600 text-white border-teal-700";
+            else return base + "bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200";
+        }
+        function updateGridButton(idx) { const btn = document.getElementById(`grid-btn-${idx}`); if (btn) btn.className = getGridBtnClass(idx); }
+        function updateProgressSummary() {
+            let count = 0;
+            questions.forEach(q => { const ans = userAnswers[q.id]; if (Array.isArray(ans) ? ans.length > 0 : !!ans) count++; });
+            document.getElementById('progress-summary').textContent = `${count}/${questions.length} Terjawab`;
+        }
+
+        /* ==========================================================================
+           17. SUBMISSION & SCORING
+           ========================================================================== */
+        function promptSubmitExam() {
+            let answered = 0;
+            questions.forEach(q => { const ans = userAnswers[q.id]; if (Array.isArray(ans) ? ans.length > 0 : !!ans) answered++; });
+            document.getElementById('modal-answered-count').textContent = `${answered} / ${questions.length}`;
+            document.getElementById('modal-unanswered-count').textContent = `${questions.length - answered} / ${questions.length}`;
+            const modal = document.getElementById('modal-submit');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+        function closeSubmitModal() {
+            const modal = document.getElementById('modal-submit');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+        function submitExam() {
+            closeSubmitModal();
+            clearInterval(timerInterval);
+            let scorePG = 0, scoreBS = 0, scorePGK = 0;
+            questions.forEach(q => {
+                const userAns = userAnswers[q.id];
+                if (q.type === 'PG') { if (userAns === q.answer) scorePG += q.points; }
+                else if (q.type === 'BS') { if (userAns === q.answer) scoreBS += q.points; }
+                else if (q.type === 'PGK') {
+                    if (Array.isArray(userAns)) {
+                        if ([...userAns].sort().join('') === [...q.answer].sort().join('')) scorePGK += q.points;
+                    }
+                }
+            });
+            const totalScore = scorePG + scoreBS + scorePGK;
+            const scoresObj = { scorePG, scoreBS, scorePGK, totalScore };
+            const attemptData = { studentData, userAnswers, scores: scoresObj, submittedAt: new Date().toISOString() };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(attemptData));
+            saveSubmissionToCloud(scoresObj);
+            showResults(scoresObj);
+        }
+
+        async function saveSubmissionToCloud(scoresObj) {
+            if (!supabaseClient) return;
+            try {
+                const docId = `${studentData.class}_${studentData.no}_${studentData.name.replace(/\s+/g,'_').toLowerCase()}`;
+                const pack = getActivePackage();
+                const payload = {
+                    id: docId,
+                    student_data: studentData,
+                    user_answers: userAnswers,
+                    scores: scoresObj,
+                    submitted_at: new Date().toISOString(),
+                    package_id: activeQuestionPackageId,
+                    package_name: pack?.metadata?.examName || null,
+                    package_grade: pack?.metadata?.grade || null,
+                    package_material: pack?.metadata?.material || null
+                };
+                const { error } = await supabaseClient.from('submissions').upsert(payload, { onConflict: 'id' });
+                if (error) console.error("Gagal simpan ke Supabase:", error);
+            } catch (err) { console.error("Cloud save failed:", err); }
+        }
+
+        /* ==========================================================================
+           18. RESULTS & PEMBAHASAN
+           ========================================================================== */
+        function showResults(scores) {
+            document.getElementById('screen-start').classList.add('hidden');
+            document.getElementById('screen-exam').classList.add('hidden');
+            document.getElementById('screen-teacher').classList.add('hidden');
+            document.getElementById('screen-result').classList.remove('hidden');
+            document.getElementById('result-student-info').textContent = 
+                `Nama: ${studentData.name || '-'} | Kelas: ${studentData.class || '-'} | Absen: ${studentData.no || '-'}`;
+            document.getElementById('final-score-text').textContent = scores.totalScore || 0;
+            const maxPG = questions.filter(q => q.type === 'PG').reduce((s,q) => s + Number(q.points || 0), 0);
+            const maxBS = questions.filter(q => q.type === 'BS').reduce((s,q) => s + Number(q.points || 0), 0);
+            const maxPGK = questions.filter(q => q.type === 'PGK').reduce((s,q) => s + Number(q.points || 0), 0);
+            document.getElementById('score-pg').textContent = `${scores.scorePG || 0} / ${maxPG}`;
+            document.getElementById('score-bs').textContent = `${scores.scoreBS || 0} / ${maxBS}`;
+            document.getElementById('score-pgk').textContent = `${scores.scorePGK || 0} / ${maxPGK}`;
+
+            const pack = getActivePackage();
+            const kkm = pack?.metadata?.kkm || 75;
+            const badge = document.getElementById('result-status-badge');
+            if ((scores.totalScore || 0) >= kkm) {
+                badge.textContent = `TUNTAS KKM (${kkm})`;
+                badge.className = "inline-block px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500 text-white shadow-sm";
+            } else {
+                badge.textContent = `REMIDI (KKM ${kkm})`;
+                badge.className = "inline-block px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500 text-white shadow-sm";
+            }
+            renderPembahasan();
+        }
+
+        function renderPembahasan() {
+            const container = document.getElementById('pembahasan-list');
+            container.innerHTML = '';
+            questions.forEach((q) => {
+                const uAns = userAnswers[q.id];
+                let isCorrect = false;
+                if (q.type === 'PG' || q.type === 'BS') isCorrect = uAns === q.answer;
+                else if (q.type === 'PGK') {
+                    if (Array.isArray(uAns)) isCorrect = [...uAns].sort().join('') === [...q.answer].sort().join('');
+                }
+                const card = document.createElement('div');
+                card.className = `p-5 rounded-2xl border bg-white shadow-sm space-y-3 ${isCorrect ? 'border-emerald-200' : 'border-rose-200'}`;
+                let userAnsDisplay = '-';
+                if (Array.isArray(uAns)) userAnsDisplay = uAns.length > 0 ? uAns.sort().join(', ') : 'Tidak Dijawab';
+                else if (uAns) userAnsDisplay = uAns;
+                else userAnsDisplay = 'Tidak Dijawab';
+                let keyDisplay = Array.isArray(q.answer) ? q.answer.sort().join(', ') : q.answer;
+                card.innerHTML = `
+                    <div class="flex items-center justify-between border-b pb-2">
+                        <span class="font-bold text-sm text-slate-800">Soal #${q.id} (${q.section})</span>
+                        <span class="px-2.5 py-0.5 rounded text-xs font-bold ${isCorrect ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                            ${isCorrect ? 'BENAR (+' + q.points + ')' : 'SALAH (+0)'}
+                        </span>
+                    </div>
+                    <div class="text-xs md:text-sm text-slate-700 leading-relaxed">${q.question}</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <div><span class="text-slate-500 font-medium">Jawaban Anda:</span> <strong class="${isCorrect ? 'text-emerald-700' : 'text-rose-700'}">${userAnsDisplay}</strong></div>
+                        <div><span class="text-slate-500 font-medium">Kunci Jawaban:</span> <strong class="text-teal-700">${keyDisplay}</strong></div>
+                    </div>
+                    <div class="text-xs text-slate-600 bg-amber-50/60 p-3 rounded-lg border border-amber-200/60">
+                        <strong class="text-amber-900 block mb-1"><i class="fa-solid fa-lightbulb mr-1"></i>Pembahasan:</strong>
+                        ${q.pembahasan}
+                    </div>`;
+                container.appendChild(card);
+            });
+        }
+
+        /* ==========================================================================
+           19. TEACHER DASHBOARD & TAB SWITCHING
+           ========================================================================== */
+        function openTeacherDashboardModal() {
+            if (isTeacherLoggedIn) showTeacherDashboardScreen();
+            else {
+                const modal = document.getElementById('modal-teacher-auth');
+                modal.classList.remove('hidden'); modal.classList.add('flex');
+                document.getElementById('input-teacher-pwd').value = '';
+                document.getElementById('teacher-auth-error').classList.add('hidden');
+                setTimeout(() => document.getElementById('input-teacher-pwd').focus(), 100);
+            }
+        }
+        function closeTeacherAuthModal() {
+            const modal = document.getElementById('modal-teacher-auth');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+        function verifyTeacherPassword(e) {
+            e.preventDefault();
+            const input = document.getElementById('input-teacher-pwd').value;
+            if (input === TEACHER_PASSWORD_KEY || input === "GURU123") {
+                isTeacherLoggedIn = true;
+                closeTeacherAuthModal();
+                showTeacherDashboardScreen();
+            } else {
+                const err = document.getElementById('teacher-auth-error');
+                err.textContent = "Kata sandi salah!";
+                err.classList.remove('hidden');
+            }
+        }
+        function showTeacherDashboardScreen() {
+            document.getElementById('screen-start').classList.add('hidden');
+            document.getElementById('screen-exam').classList.add('hidden');
+            document.getElementById('screen-result').classList.add('hidden');
+            document.getElementById('timer-box').classList.add('hidden');
+            document.getElementById('timer-box').classList.remove('flex');
+            document.getElementById('screen-teacher').classList.remove('hidden');
+            switchTeacherTab('packages');
+            renderQuestionPackages();
+            renderActivePackageHighlight();
+            renderMasterClasses();
+            renderMasterStudents();
+            renderTeacherDashboard();
+        }
+        function closeTeacherDashboard() {
+            document.getElementById('screen-teacher').classList.add('hidden');
+            document.getElementById('screen-start').classList.remove('hidden');
+        }
+
+        function switchTeacherTab(tab) {
+            currentTeacherTab = tab;
+            ['packages','classes','students','results'].forEach(t => {
+                const btn = document.getElementById('tab-btn-' + t);
+                const content = document.getElementById('tab-content-' + t);
+                if (t === tab) {
+                    btn.classList.remove('bg-slate-100','text-slate-700');
+                    btn.classList.add('bg-teal-600','text-white');
+                    content.classList.remove('hidden');
+                } else {
+                    btn.classList.add('bg-slate-100','text-slate-700');
+                    btn.classList.remove('bg-teal-600','text-white');
+                    content.classList.add('hidden');
+                }
+            });
+            if (tab === 'packages') { renderQuestionPackages(); renderActivePackageHighlight(); }
+            if (tab === 'classes') renderMasterClasses();
+            if (tab === 'students') {
+                const sel = document.getElementById('filter-master-student-class');
+                const sorted = [...masterClasses].sort((a,b) => {
+                    if (a.grade !== b.grade) return ['X','XI','XII'].indexOf(a.grade) - ['X','XI','XII'].indexOf(b.grade);
+                    return a.name.localeCompare(b.name);
+                });
+                sel.innerHTML = '<option value="ALL">Semua Kelas</option>' + 
+                    sorted.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                renderMasterStudents();
+            }
+            if (tab === 'results') renderTeacherDashboard();
+        }
+
+        /* ==========================================================================
+           20. RENDER TEACHER DASHBOARD (Results)
+           ========================================================================== */
+        function renderTeacherDashboard() {
+            if (!isTeacherLoggedIn) return;
+            const selectedClass = document.getElementById('filter-class').value;
+            const sortOrder = document.getElementById('sort-order').value;
+            const searchQuery = document.getElementById('search-student').value.toLowerCase().trim();
+
+            let filtered = allSubmissions.filter(s => {
+                if (!s.studentData) return false;
+                const matchClass = selectedClass === 'ALL' || s.studentData.class === selectedClass;
+                const matchSearch = (s.studentData.name || '').toLowerCase().includes(searchQuery) ||
+                                    String(s.studentData.no || '').includes(searchQuery);
+                return matchClass && matchSearch;
+            });
+            filtered.sort((a, b) => {
+                if (sortOrder === 'NEWEST') return new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0);
+                else if (sortOrder === 'SCORE_DESC') return (b.scores?.totalScore || 0) - (a.scores?.totalScore || 0);
+                else if (sortOrder === 'SCORE_ASC') return (a.scores?.totalScore || 0) - (b.scores?.totalScore || 0);
+                else if (sortOrder === 'NAME_ASC') return (a.studentData?.name || '').localeCompare(b.studentData?.name || '');
+                return 0;
+            });
+
+            const total = filtered.length;
+            let sumScore = 0, passedCount = 0;
+            let minScore = total > 0 ? 100 : 0, maxScore = 0;
+            const pack = getActivePackage();
+            const kkm = pack?.metadata?.kkm || 75;
+            filtered.forEach(s => {
+                const score = s.scores?.totalScore || 0;
+                sumScore += score;
+                if (score >= kkm) passedCount++;
+                if (score > maxScore) maxScore = score;
+                if (score < minScore) minScore = score;
+            });
+            const avgScore = total > 0 ? (sumScore / total).toFixed(1) : '0';
+            document.getElementById('stat-total-students').textContent = total;
+            document.getElementById('stat-avg-score').textContent = avgScore;
+            document.getElementById('stat-passed-students').textContent = `${passedCount} (${total > 0 ? Math.round((passedCount/total)*100) : 0}%)`;
+            document.getElementById('stat-min-max').textContent = `${maxScore} / ${total > 0 ? minScore : 0}`;
+
+            const tbody = document.getElementById('teacher-table-body');
+            tbody.innerHTML = '';
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center py-12 text-slate-400">
+                    <i class="fa-solid fa-inbox text-3xl mb-2 block"></i>Belum ada data sesuai filter.
+                </td></tr>`;
+                return;
+            }
+            filtered.forEach((sub, idx) => {
+                const score = sub.scores?.totalScore || 0;
+                const isPassed = score >= kkm;
+                const submittedDate = sub.submittedAt ? new Date(sub.submittedAt).toLocaleString('id-ID', { day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit' }) : '-';
+                const studentName = sub.studentData?.name || '-';
+                const studentClass = sub.studentData?.class || '-';
+                const studentNo = sub.studentData?.no || '-';
+                const docId = sub.docId || '';
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+                tr.innerHTML = `
+                    <td class="p-3 text-center font-bold text-slate-400">${idx + 1}</td>
+                    <td class="p-3 font-semibold text-slate-800">${escapeHtml(studentName)}</td>
+                    <td class="p-3"><span class="bg-slate-100 text-slate-700 font-medium px-2 py-0.5 rounded">${escapeHtml(studentClass)}</span></td>
+                    <td class="p-3 text-center font-semibold text-slate-600">${escapeHtml(String(studentNo))}</td>
+                    <td class="p-3 text-center text-slate-600">${sub.scores?.scorePG || 0}</td>
+                    <td class="p-3 text-center text-slate-600">${sub.scores?.scoreBS || 0}</td>
+                    <td class="p-3 text-center text-slate-600">${sub.scores?.scorePGK || 0}</td>
+                    <td class="p-3 text-center font-black text-sm text-teal-800">${score}</td>
+                    <td class="p-3 text-center">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isPassed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                            ${isPassed ? 'TUNTAS' : 'REMIDI'}
+                        </span>
+                    </td>
+                    <td class="p-3 text-slate-500 text-[11px]">${submittedDate}</td>
+                    <td class="p-3 text-center">
+                        <div class="inline-flex gap-1">
+                            <button data-action="detail" data-id="${escapeHtml(docId)}" data-name="${escapeHtml(studentName)}" title="Lihat Detail" class="px-2.5 py-1.5 bg-teal-100 hover:bg-teal-200 text-teal-800 rounded font-bold text-[11px] transition"><i class="fa-solid fa-eye"></i></button>
+                            <button data-action="edit" data-id="${escapeHtml(docId)}" data-name="${escapeHtml(studentName)}" title="Edit Data" class="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded font-bold text-[11px] transition"><i class="fa-solid fa-pen"></i></button>
+                            <button data-action="delete" data-id="${escapeHtml(docId)}" data-name="${escapeHtml(studentName)}" title="Hapus Data" class="px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded font-bold text-[11px] transition"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function deleteStudentSubmission(docId, name) {
+            if (!confirm(`Hapus data ujian siswa ${name || ''}?`)) return;
+            try {
+                if (supabaseClient) {
+                    const { error } = await supabaseClient.from('submissions').delete().eq('id', docId);
+                    if (error) alert('Gagal menghapus: ' + error.message);
+                    else { alert('Data berhasil dihapus.'); fetchSubmissions(); }
+                }
+            } catch (err) { console.error("Delete failed:", err); alert('Terjadi kesalahan.'); }
+        }
+
+        function showStudentDetailModal(docId) {
+            const sub = allSubmissions.find(s => s.docId === docId);
+            if (!sub) { alert('Data tidak ditemukan!'); return; }
+            document.getElementById('detail-student-title').textContent = 
+                `${sub.studentData?.name || '-'} (${sub.studentData?.class || '-'} / Absen ${sub.studentData?.no || '-'})`;
+            document.getElementById('detail-student-score').textContent = `Total Skor: ${sub.scores?.totalScore || 0} / 100`;
+            const body = document.getElementById('detail-student-body');
+            body.innerHTML = '';
+            questions.forEach(q => {
+                const uAns = sub.userAnswers ? sub.userAnswers[q.id] : null;
+                let isCorrect = false;
+                if (q.type === 'PG' || q.type === 'BS') isCorrect = uAns === q.answer;
+                else if (q.type === 'PGK') {
+                    if (Array.isArray(uAns)) isCorrect = [...uAns].sort().join('') === [...q.answer].sort().join('');
+                }
+                let uDisplay = Array.isArray(uAns) ? (uAns.join(', ') || '-') : (uAns || '-');
+                let kDisplay = Array.isArray(q.answer) ? q.answer.join(', ') : q.answer;
+                const div = document.createElement('div');
+                div.className = `p-3 rounded-xl border text-xs space-y-1.5 ${isCorrect ? 'bg-emerald-50/60 border-emerald-200' : 'bg-rose-50/60 border-rose-200'}`;
+                div.innerHTML = `
+                    <div class="flex justify-between font-bold items-center">
+                        <span class="text-slate-800">Soal #${q.id} <span class="text-[10px] font-normal text-slate-500">[${q.type}]</span></span>
+                        <span class="px-2 py-0.5 rounded text-[10px] ${isCorrect ? 'bg-emerald-200 text-emerald-900' : 'bg-rose-200 text-rose-900'}">
+                            ${isCorrect ? '<i class="fa-solid fa-check mr-1"></i>BENAR' : '<i class="fa-solid fa-xmark mr-1"></i>SALAH'}
+                        </span>
+                    </div>
+                    <div class="text-slate-600 leading-relaxed">${q.question.replace(/<[^>]*>?/gm,' ').substring(0, 150)}${q.question.length > 150 ? '...' : ''}</div>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 pt-1.5 border-t border-slate-200/60 mt-1.5">
+                        <span class="text-slate-500">Jawaban: <strong class="${isCorrect ? 'text-emerald-700' : 'text-rose-700'}">${uDisplay}</strong></span>
+                        <span class="text-slate-500">Kunci: <strong class="text-teal-700">${kDisplay}</strong></span>
+                    </div>`;
+                body.appendChild(div);
+            });
+            const modal = document.getElementById('modal-student-detail');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+        function closeStudentDetailModal() {
+            const modal = document.getElementById('modal-student-detail');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+
+        /* ==========================================================================
+           21. EDIT STUDENT (from exam submission)
+           ========================================================================== */
+        function openEditStudentModal(docId) {
+            const sub = allSubmissions.find(s => s.docId === docId);
+            if (!sub) { alert('Data tidak ditemukan!'); return; }
+            document.getElementById('edit-doc-id').value = docId;
+            document.getElementById('edit-name').value = sub.studentData?.name || '';
+            document.getElementById('edit-class').value = sub.studentData?.class || '';
+            document.getElementById('edit-no').value = sub.studentData?.no || '';
+            const modal = document.getElementById('modal-edit-student');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            setTimeout(() => document.getElementById('edit-name').focus(), 100);
+        }
+        function closeEditStudentModal() {
+            const modal = document.getElementById('modal-edit-student');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+        async function saveEditedStudent(e) {
+            e.preventDefault();
+            const oldDocId = document.getElementById('edit-doc-id').value;
+            const newName = document.getElementById('edit-name').value.trim();
+            const newClass = document.getElementById('edit-class').value;
+            const newNo = document.getElementById('edit-no').value.trim();
+            if (!newName || !newClass || !newNo) return alert('Semua field harus diisi!');
+            const oldSub = allSubmissions.find(s => s.docId === oldDocId);
+            if (!oldSub) return alert('Data lama tidak ditemukan!');
+            const newDocId = `${newClass}_${newNo}_${newName.replace(/\s+/g,'_').toLowerCase()}`;
+            if (!confirm(`Simpan perubahan?\n\nNama: ${oldSub.studentData?.name} → ${newName}\nKelas: ${oldSub.studentData?.class} → ${newClass}\nAbsen: ${oldSub.studentData?.no} → ${newNo}`)) return;
+            try {
+                const updatedPayload = {
+                    id: newDocId,
+                    student_data: { name: newName, class: newClass, no: newNo },
+                    user_answers: oldSub.userAnswers || {},
+                    scores: oldSub.scores || { scorePG:0, scoreBS:0, scorePGK:0, totalScore:0 },
+                    submitted_at: oldSub.submittedAt || new Date().toISOString(),
+                    package_id: oldSub.packageId || activeQuestionPackageId
+                };
+                if (newDocId !== oldDocId) {
+                    const conflict = allSubmissions.find(s => s.docId === newDocId);
+                    if (conflict) {
+                        if (!confirm(`PERINGATAN: Sudah ada "${conflict.studentData?.name}". Data akan ditimpa. Lanjutkan?`)) return;
+                        await supabaseClient.from('submissions').delete().eq('id', newDocId);
+                    }
+                    const { error: upsertError } = await supabaseClient.from('submissions').upsert(updatedPayload, { onConflict:'id' });
+                    if (upsertError) throw upsertError;
+                    const { error: deleteError } = await supabaseClient.from('submissions').delete().eq('id', oldDocId);
+                    if (deleteError) console.warn('Gagal hapus lama:', deleteError);
+                } else {
+                    const { error: upsertError } = await supabaseClient.from('submissions').upsert(updatedPayload, { onConflict:'id' });
+                    if (upsertError) throw upsertError;
+                }
+                alert('Data siswa berhasil diperbarui!');
+                closeEditStudentModal();
+                await fetchSubmissions();
+                renderTeacherDashboard();
+            } catch (err) {
+                console.error('Gagal update:', err);
+                alert('Gagal menyimpan: ' + (err.message || 'Terjadi kesalahan'));
+            }
+        }
+
+        function exportTeacherDataToCSV() {
+            if (!allSubmissions || allSubmissions.length === 0) return alert('Belum ada data untuk diekspor!');
+            let csv = "data:text/csv;charset=utf-8,No,Nama,Kelas,Absen,Skor PG,Skor BS,Skor PGK,Total Skor,Status,Waktu Selesai\n";
+            const pack = getActivePackage();
+            const kkm = pack?.metadata?.kkm || 75;
+            allSubmissions.forEach((sub, idx) => {
+                const name = `"${(sub.studentData?.name || '').replace(/"/g,'""')}"`;
+                const cls = sub.studentData?.class || '';
+                const no = sub.studentData?.no || '';
+                const pg = sub.scores?.scorePG || 0;
+                const bs = sub.scores?.scoreBS || 0;
+                const pgk = sub.scores?.scorePGK || 0;
+                const total = sub.scores?.totalScore || 0;
+                const status = total >= kkm ? 'TUNTAS' : 'REMIDI';
+                const time = sub.submittedAt ? new Date(sub.submittedAt).toLocaleString('id-ID') : '';
+                csv += `${idx+1},${name},${cls},${no},${pg},${bs},${pgk},${total},${status},"${time}"\n`;
+            });
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csv));
+            link.setAttribute("download", `Hasil_Ulangan_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+
+        function promptResetExam() {
+            const pwd = prompt("Masukkan Kata Sandi Guru untuk meriset pengerjaan:");
+            if (pwd === TEACHER_PASSWORD_KEY || pwd === "GURU123") {
+                localStorage.removeItem(STORAGE_KEY);
+                alert("Pengerjaan berhasil diriset. Halaman akan dimuat ulang.");
+                location.reload();
+            } else if (pwd !== null) alert("Kata sandi salah!");
+        }
+
+        /* ==========================================================================
+           22. EVENT HANDLERS & INIT
+           ========================================================================== */
+        window.addEventListener('DOMContentLoaded', () => {
+            ensureData();
+            initSupabase();
+            checkExistingAttempt();
+            updateDynamicUI();
+            document.getElementById('teacher-table-body').addEventListener('click', handleTableAction);
+        });
+
+        function handleTableAction(e) {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            const action = btn.dataset.action;
+            const docId = btn.dataset.id;
+            const name = btn.dataset.name || '';
+            if (action === 'detail') showStudentDetailModal(docId);
+            else if (action === 'edit') openEditStudentModal(docId);
+            else if (action === 'delete') deleteStudentSubmission(docId, name);
+        }
+
+        document.addEventListener('click', (e) => {
+            const modals = ['modal-teacher-auth','modal-student-detail','modal-edit-student','modal-submit','modal-package-metadata','modal-edit-class','modal-edit-student-master','modal-bulk-student'];
+            modals.forEach(id => {
+                const modal = document.getElementById(id);
+                if (modal && e.target === modal) {
+                    if (id === 'modal-teacher-auth') closeTeacherAuthModal();
+                    else if (id === 'modal-student-detail') closeStudentDetailModal();
+                    else if (id === 'modal-edit-student') closeEditStudentModal();
+                    else if (id === 'modal-submit') closeSubmitModal();
+                    else if (id === 'modal-package-metadata') closePackageMetadataModal();
+                    else if (id === 'modal-edit-class') closeEditClassModal();
+                    else if (id === 'modal-edit-student-master') closeEditStudentMasterModal();
+                    else if (id === 'modal-bulk-student') closeBulkStudentModal();
+                }
+            });
+            if (!e.target.closest('#input-name') && !e.target.closest('#name-suggestions')) {
+                closeNameSuggestions();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeTeacherAuthModal();
+                closeStudentDetailModal();
+                closeEditStudentModal();
+                closeSubmitModal();
+                closePackageMetadataModal();
+                closeEditClassModal();
+                closeEditStudentMasterModal();
+                closeBulkStudentModal();
+                closeNameSuggestions();
+            }
+        });
+    </script>
+</body>
+</html>
