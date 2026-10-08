@@ -925,11 +925,12 @@
         function showToast(message, type = 'info') {
             const c = document.getElementById('toast-container');
             const colors = { info: 'bg-blue-600', warning: 'bg-amber-600', error: 'bg-rose-600', success: 'bg-emerald-600' };
+            const icons = { info: 'fa-circle-info', warning: 'fa-triangle-exclamation', error: 'fa-circle-exclamation', success: 'fa-circle-check' };
             const t = document.createElement('div');
             t.className = `toast-slide ${colors[type]} text-white px-4 py-2.5 rounded-lg shadow-lg text-sm font-semibold pointer-events-auto max-w-sm`;
-            t.innerHTML = `<i class="fa-solid fa-circle-info mr-2"></i>${message}`;
+            t.innerHTML = `<i class="fa-solid ${icons[type]} mr-2"></i>${message}`;
             c.appendChild(t);
-            setTimeout(() => { t.style.transition = 'opacity 0.5s, transform 0.5s'; t.style.opacity = '0'; t.style.transform = 'translateY(-20px)'; setTimeout(() => t.remove(), 500); }, 2500);
+            setTimeout(() => { t.style.transition = 'opacity 0.5s, transform 0.5s'; t.style.opacity = '0'; t.style.transform = 'translateY(-20px)'; setTimeout(() => t.remove(), 500); }, 3000);
         }
 
         /* ==========================================================================
@@ -1082,45 +1083,58 @@
             if (!supabaseClient) return;
             try {
                 for (const p of questionPackages) {
-                    const payload = { 
-                        id: p.id, 
-                        metadata: p.metadata, 
-                        questions: p.questions, 
-                        created_at: p.createdAt 
+                    const payload = {
+                        id: p.id,
+                        metadata: p.metadata,
+                        questions: p.questions,
+                        created_at: p.createdAt
                     };
                     const { error } = await supabaseClient.from('question_packages').upsert(payload, { onConflict: 'id' });
                     if (error) console.error('Gagal sync paket:', p.id, error);
                 }
             } catch (err) { console.error('Sync packages error:', err); }
         }
+
         async function loadQuestionPackagesFromCloud() {
-            if (!supabaseClient || isQuestionDataSyncing) return; 
+            if (!supabaseClient || isQuestionDataSyncing) return;
             isQuestionDataSyncing = true;
             try {
                 const { data, error } = await supabaseClient.from('question_packages').select('*');
                 if (error) throw error;
-                if (data && data.length) {
+
+                /* [FIX] Selalu proses data cloud, TIDAK peduli jumlahnya.
+                   Sebelumnya: if (data && data.length) — jika cloud punya lebih sedikit paket
+                   (karena hapus), tidak tersinkron ke device lain. */
+                if (data) {
                     const cloudPackages = data.map(p => ({
                         id: p.id,
                         metadata: p.metadata,
                         createdAt: p.created_at,
                         questions: p.questions || []
                     }));
-                    
+
+                    /* [FIX] Bandingkan IDs untuk deteksi penambahan/penghapusan paket */
+                    const currentIds = questionPackages.map(p => p.id).sort().join(',');
+                    const cloudIds = cloudPackages.map(p => p.id).sort().join(',');
                     const currentHash = JSON.stringify(questionPackages);
                     const cloudHash = JSON.stringify(cloudPackages);
-                    if (currentHash !== cloudHash) {
-                        questionPackages = cloudPackages;
-                        if (!activeQuestionPackageId || !questionPackages.some(p => p.id === activeQuestionPackageId)) {
-                            activeQuestionPackageId = questionPackages[0].id;
-                        }
-                        const active = getActivePackage();
-                        if (active) questions = cloneQuestions(active.questions);
-                        persistQuestionPackages(false);
-                        updateDynamicUI();
-                        if (isTeacherLoggedIn) {
-                            renderQuestionPackages(); 
-                            renderActivePackageHighlight();
+
+                    /* [FIX] Update jika ada perbedaan (termasuk paket yang dihapus dari cloud) */
+                    if (currentIds !== cloudIds || currentHash !== cloudHash) {
+                        /* Jangan wipe lokal jika cloud kosong (kemungkinan error fetch) */
+                        if (cloudPackages.length > 0) {
+                            questionPackages = cloudPackages;
+                            if (!activeQuestionPackageId || !questionPackages.some(p => p.id === activeQuestionPackageId)) {
+                                activeQuestionPackageId = questionPackages[0].id;
+                            }
+                            const active = getActivePackage();
+                            if (active) questions = cloneQuestions(active.questions);
+                            persistQuestionPackages(false);
+                            updateDynamicUI();
+                            if (isTeacherLoggedIn) {
+                                renderQuestionPackages();
+                                renderActivePackageHighlight();
+                            }
                         }
                     }
                 }
@@ -1214,6 +1228,10 @@
 
         function renderQuestionPackages() {
             const list = document.getElementById('question-package-list'); if (!list) return;
+            if (!questionPackages.length) {
+                list.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400"><i class="fa-solid fa-inbox text-3xl mb-2 block"></i>Belum ada paket ujian. Klik "Buat Paket" untuk menambah.</div>`;
+                return;
+            }
             list.innerHTML = questionPackages.map(p => {
                 const m = p.metadata || {}; const tp = (p.questions||[]).reduce((s,q)=>s+Number(q.points||0),0); const active = p.id === activeQuestionPackageId; const sid = safeId(p.id);
                 return `<div class="rounded-xl border ${active?'border-teal-400 bg-teal-50':'border-slate-200 bg-slate-50'} p-4"><div class="flex items-start justify-between gap-2"><div><p class="font-bold text-sm text-slate-800">${escapeHtml(m.examName || p.name)}</p><p class="text-[11px] text-slate-500 mt-1">${escapeHtml(m.material || '')} • Kelas ${escapeHtml(m.grade || '-')}</p></div>${active?'<span class="text-[10px] font-bold bg-teal-600 text-white px-2 py-1 rounded-full">AKTIF</span>':''}</div><div class="flex flex-wrap gap-1 mt-3 text-[10px]"><span class="bg-white border border-slate-200 px-1.5 py-0.5 rounded">${escapeHtml(m.subject || '-')}</span><span class="bg-white border border-slate-200 px-1.5 py-0.5 rounded">${m.duration || 0} min</span><span class="bg-white border border-slate-200 px-1.5 py-0.5 rounded">KKM ${m.kkm || 0}</span></div><div class="flex justify-between text-xs text-slate-600 mt-3"><span><i class="fa-solid fa-list-ol mr-1"></i>${(p.questions||[]).length} soal</span><span><i class="fa-solid fa-star mr-1"></i>${tp} poin</span></div><div class="flex gap-2 mt-3"><button onclick="activateQuestionPackage('${sid}')" class="flex-1 px-2.5 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold"><i class="fa-solid fa-check mr-1"></i> Gunakan</button><button onclick="openEditPackageMetadataModal('${sid}')" class="px-3 py-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-semibold"><i class="fa-solid fa-pen"></i></button><button onclick="deleteQuestionPackage('${sid}')" class="px-3 py-2 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-semibold"><i class="fa-solid fa-trash"></i></button></div></div>`;
@@ -1228,13 +1246,39 @@
             alert(`Paket aktif: ${pack.metadata?.examName || pack.name}\n${questions.length} soal siap digunakan.`);
         }
 
-        function deleteQuestionPackage(id) {
-            if (questionPackages.length <= 1) return alert('Minimal 1 paket.');
-            const pack = questionPackages.find(p=>p.id===id); if (!pack || !confirm(`Hapus "${pack.metadata?.examName || pack.name}"?`)) return;
-            questionPackages = questionPackages.filter(p=>p.id!==id);
-            if (id === activeQuestionPackageId) { activeQuestionPackageId = questionPackages[0].id; questions = cloneQuestions(questionPackages[0].questions || []); updateDynamicUI(); }
-            persistQuestionPackages(); renderQuestionPackages(); renderActivePackageHighlight();
-            if (supabaseClient) supabaseClient.from('question_packages').delete().eq('id', id);
+        /* [FIX] deleteQuestionPackage: sekarang async, await cloud delete, error handling */
+        async function deleteQuestionPackage(id) {
+            if (questionPackages.length <= 1) return alert('Minimal 1 paket harus tersisa.');
+            const pack = questionPackages.find(p => p.id === id);
+            if (!pack || !confirm(`Hapus "${pack.metadata?.examName || pack.name}"?\n\nPaket akan dihapus permanen dari semua device.`)) return;
+
+            /* [FIX] Step 1: Hapus dari CLOUD DULU dengan await + error handling */
+            if (supabaseClient) {
+                try {
+                    const { error } = await supabaseClient.from('question_packages').delete().eq('id', id);
+                    if (error) {
+                        console.error('Gagal hapus dari cloud:', error);
+                        showToast('Gagal menghapus dari cloud: ' + error.message, 'error');
+                        return; /* Jangan hapus lokal jika cloud gagal */
+                    }
+                } catch (err) {
+                    console.error('Gagal hapus dari cloud:', err);
+                    showToast('Gagal menghapus dari cloud. Periksa koneksi internet.', 'error');
+                    return;
+                }
+            }
+
+            /* [FIX] Step 2: Cloud sukses -> hapus lokal */
+            questionPackages = questionPackages.filter(p => p.id !== id);
+            if (id === activeQuestionPackageId) {
+                activeQuestionPackageId = questionPackages[0].id;
+                questions = cloneQuestions(questionPackages[0].questions || []);
+                updateDynamicUI();
+            }
+            persistQuestionPackages(false); /* false = jangan re-sync ke cloud (sudah dihapus) */
+            renderQuestionPackages();
+            renderActivePackageHighlight();
+            showToast(`Paket "${pack.metadata?.examName || pack.name}" berhasil dihapus dari semua device!`, 'success');
         }
 
         function openCreatePackageModal() {
@@ -1348,7 +1392,7 @@
                 let opts = existingQ ? existingQ.options : [];
                 let ans = existingQ ? existingQ.answer : [];
                 if (!Array.isArray(ans) && ans) ans = [ans];
-                
+
                 for (let i = 0; i < 5; i++) {
                     let letter = String.fromCharCode(65 + i);
                     let val = opts[i] ? opts[i].replace(/^[A-E]\.\s*/, '') : '';
@@ -1721,17 +1765,17 @@
                 const { data, error } = await supabaseClient.from('submissions').select('*');
                 if (error) return;
                 if (data) {
-                    allSubmissions = data.map(item => ({ 
-                        docId: item.id, 
-                        studentData: item.student_data || item.studentData, 
-                        userAnswers: item.user_answers || item.userAnswers, 
-                        scores: item.scores, 
-                        submittedAt: item.submitted_at || item.submittedAt, 
+                    allSubmissions = data.map(item => ({
+                        docId: item.id,
+                        studentData: item.student_data || item.studentData,
+                        userAnswers: item.user_answers || item.userAnswers,
+                        scores: item.scores,
+                        submittedAt: item.submitted_at || item.submittedAt,
                         packageId: item.package_id,
                         packageName: item.package_name,
-                        violationLog: item.violation_log, 
-                        autoSubmitted: item.auto_submitted, 
-                        autoSubmitReason: item.auto_submit_reason 
+                        violationLog: item.violation_log,
+                        autoSubmitted: item.auto_submitted,
+                        autoSubmitReason: item.auto_submit_reason
                     }));
                     if (isTeacherLoggedIn) renderTeacherDashboard();
                 }
@@ -1948,6 +1992,9 @@
             if (i === TEACHER_PASSWORD_KEY || i === 'GURU123') { isTeacherLoggedIn = true; closeTeacherAuthModal(); showTeacherDashboardScreen(); }
             else { const err = document.getElementById('teacher-auth-error'); err.textContent = 'Salah!'; err.classList.remove('hidden'); }
         }
+
+        /* [FIX] showTeacherDashboardScreen: tambah loadQuestionPackagesFromCloud() dan loadMasterDataFromCloud()
+           agar saat dashboard dibuka di device baru, data selalu fresh dari cloud */
         function showTeacherDashboardScreen() {
             document.getElementById('screen-start').classList.add('hidden');
             document.getElementById('screen-exam').classList.add('hidden');
@@ -1959,9 +2006,15 @@
             renderMasterClasses(); renderMasterStudents();
             loadAntiCheatSettingsUI();
             renderTeacherDashboard();
+
+            /* [FIX] Force refresh dari cloud saat dashboard dibuka di device baru */
+            loadQuestionPackagesFromCloud();
+            loadMasterDataFromCloud();
         }
+
         function closeTeacherDashboard() { document.getElementById('screen-teacher').classList.add('hidden'); document.getElementById('screen-start').classList.remove('hidden'); }
 
+        /* [FIX] switchTeacherTab: tambah loadQuestionPackagesFromCloud() saat buka tab packages */
         function switchTeacherTab(tab) {
             currentTeacherTab = tab;
             ['packages','classes','students','anticheat','results'].forEach(t => {
@@ -1969,7 +2022,10 @@
                 if (t === tab) { b.classList.remove('bg-slate-100','text-slate-700'); b.classList.add('bg-teal-600','text-white'); c.classList.remove('hidden'); }
                 else { b.classList.add('bg-slate-100','text-slate-700'); b.classList.remove('bg-teal-600','text-white'); c.classList.add('hidden'); }
             });
-            if (tab === 'packages') { renderQuestionPackages(); renderActivePackageHighlight(); }
+            if (tab === 'packages') {
+                loadQuestionPackagesFromCloud(); /* [FIX] Force sync dari cloud */
+                renderQuestionPackages(); renderActivePackageHighlight();
+            }
             if (tab === 'classes') renderMasterClasses();
             if (tab === 'students') {
                 const sorted = [...masterClasses].sort((a,b) => { if (a.grade !== b.grade) return ['X','XI','XII'].indexOf(a.grade) - ['X','XI','XII'].indexOf(b.grade); return a.name.localeCompare(b.name); });
@@ -1978,7 +2034,6 @@
             }
             if (tab === 'anticheat') loadAntiCheatSettingsUI();
             if (tab === 'results') {
-                // Populate Package Filter
                 const fp = document.getElementById('filter-package');
                 if (fp) {
                     let opt = '<option value="ALL">Semua Paket Ujian</option>';
@@ -2048,11 +2103,10 @@
                 s.violationLog.forEach(v => { vDiv.innerHTML += `<div class="text-rose-700">#${v.count} - ${new Date(v.timestamp).toLocaleString('id-ID')}: ${escapeHtml(v.reason)}</div>`; });
                 b.appendChild(vDiv);
             }
-            
-            // Try to find the questions for this specific package, fallback to active if not found
+
             const pack = questionPackages.find(p => p.id === s.packageId);
             const qs = pack ? pack.questions : questions;
-            
+
             qs.forEach(q => {
                 const ua = s.userAnswers ? s.userAnswers[q.id] : null; let ok = false;
                 if (q.type === 'PG' || q.type === 'BS') ok = ua === q.answer;
@@ -2118,13 +2172,12 @@
 
             if (!f.length) return alert('Tidak ada data untuk diexport!');
 
-            // Sort same as table
-            f.sort((a, b) => { 
-                if (so === 'NEWEST') return new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0); 
-                else if (so === 'SCORE_DESC') return (b.scores?.totalScore || 0) - (a.scores?.totalScore || 0); 
-                else if (so === 'SCORE_ASC') return (a.scores?.totalScore || 0) - (b.scores?.totalScore || 0); 
-                else if (so === 'NAME_ASC') return (a.studentData?.name || '').localeCompare(b.studentData?.name || ''); 
-                return 0; 
+            f.sort((a, b) => {
+                if (so === 'NEWEST') return new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0);
+                else if (so === 'SCORE_DESC') return (b.scores?.totalScore || 0) - (a.scores?.totalScore || 0);
+                else if (so === 'SCORE_ASC') return (a.scores?.totalScore || 0) - (b.scores?.totalScore || 0);
+                else if (so === 'NAME_ASC') return (a.studentData?.name || '').localeCompare(b.studentData?.name || '');
+                return 0;
             });
 
             const data = f.map((s, i) => ({
@@ -2144,10 +2197,9 @@
             }));
 
             const ws = XLSX.utils.json_to_sheet(data);
-            // Set column widths
             const cols = Object.keys(data[0]).map(k => ({ wch: Math.max(k.length, 15) }));
             ws['!cols'] = cols;
-            
+
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Hasil Ujian");
             XLSX.writeFile(wb, `Hasil_Ujian_${new Date().toISOString().slice(0,10)}.xlsx`);
