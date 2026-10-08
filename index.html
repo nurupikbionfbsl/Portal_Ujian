@@ -338,18 +338,21 @@
                     <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><p class="text-xs text-slate-500 font-medium">Tertinggi / Terendah</p><p id="stat-min-max" class="text-xl font-extrabold text-slate-800 mt-2">0 / 0</p></div>
                 </div>
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
-                    <div class="flex items-center gap-3">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <select id="filter-package" onchange="renderTeacherDashboard()" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500">
+                            <option value="ALL">Semua Paket Ujian</option>
+                        </select>
                         <select id="filter-class" onchange="renderTeacherDashboard()" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500"><option value="ALL">Semua Kelas</option></select>
                         <select id="sort-order" onchange="renderTeacherDashboard()" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-teal-500"><option value="NEWEST">Waktu Terbaru</option><option value="SCORE_DESC">Nilai Tertinggi</option><option value="SCORE_ASC">Nilai Terendah</option><option value="NAME_ASC">Nama (A-Z)</option></select>
                     </div>
                     <div class="flex items-center gap-2 w-full md:w-72">
                         <input type="text" id="search-student" onkeyup="renderTeacherDashboard()" placeholder="Cari..." class="w-full px-3.5 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 outline-none">
-                        <button onclick="exportTeacherDataToCSV()" class="px-3 py-2 bg-slate-700 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs shadow"><i class="fa-solid fa-file-csv"></i></button>
+                        <button onclick="exportTeacherDataToExcel()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs shadow flex items-center gap-1"><i class="fa-solid fa-file-excel"></i> Excel</button>
                     </div>
                 </div>
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
                     <table class="w-full text-left text-xs border-collapse">
-                        <thead><tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200"><th class="p-3.5 text-center">No</th><th class="p-3.5">Nama</th><th class="p-3.5">Kelas</th><th class="p-3.5 text-center">Absen</th><th class="p-3.5 text-center">PG</th><th class="p-3.5 text-center">B/S</th><th class="p-3.5 text-center">PGK</th><th class="p-3.5 text-center">Total</th><th class="p-3.5 text-center">Status</th><th class="p-3.5 text-center">Cheat</th><th class="p-3.5">Waktu</th><th class="p-3.5 text-center">Aksi</th></tr></thead>
+                        <thead><tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200"><th class="p-3.5 text-center">No</th><th class="p-3.5">Nama</th><th class="p-3.5">Kelas</th><th class="p-3.5 text-center">Absen</th><th class="p-3.5">Paket Ujian</th><th class="p-3.5 text-center">PG</th><th class="p-3.5 text-center">B/S</th><th class="p-3.5 text-center">PGK</th><th class="p-3.5 text-center">Total</th><th class="p-3.5 text-center">Status</th><th class="p-3.5 text-center">Cheat</th><th class="p-3.5">Waktu</th><th class="p-3.5 text-center">Aksi</th></tr></thead>
                         <tbody id="teacher-table-body" class="divide-y divide-slate-100 text-slate-700"></tbody>
                     </table>
                 </div>
@@ -1718,7 +1721,18 @@
                 const { data, error } = await supabaseClient.from('submissions').select('*');
                 if (error) return;
                 if (data) {
-                    allSubmissions = data.map(item => ({ docId: item.id, studentData: item.student_data || item.studentData, userAnswers: item.user_answers || item.userAnswers, scores: item.scores, submittedAt: item.submitted_at || item.submittedAt, packageId: item.package_id, violationLog: item.violation_log, autoSubmitted: item.auto_submitted, autoSubmitReason: item.auto_submit_reason }));
+                    allSubmissions = data.map(item => ({ 
+                        docId: item.id, 
+                        studentData: item.student_data || item.studentData, 
+                        userAnswers: item.user_answers || item.userAnswers, 
+                        scores: item.scores, 
+                        submittedAt: item.submitted_at || item.submittedAt, 
+                        packageId: item.package_id,
+                        packageName: item.package_name,
+                        violationLog: item.violation_log, 
+                        autoSubmitted: item.auto_submitted, 
+                        autoSubmitReason: item.auto_submit_reason 
+                    }));
                     if (isTeacherLoggedIn) renderTeacherDashboard();
                 }
             } catch (err) { console.error(err); }
@@ -1963,14 +1977,35 @@
                 renderMasterStudents();
             }
             if (tab === 'anticheat') loadAntiCheatSettingsUI();
-            if (tab === 'results') renderTeacherDashboard();
+            if (tab === 'results') {
+                // Populate Package Filter
+                const fp = document.getElementById('filter-package');
+                if (fp) {
+                    let opt = '<option value="ALL">Semua Paket Ujian</option>';
+                    questionPackages.forEach(p => {
+                        const active = p.id === activeQuestionPackageId ? '[AKTIF] ' : '';
+                        opt += `<option value="${p.id}">${active}${p.metadata?.examName || p.name}</option>`;
+                    });
+                    fp.innerHTML = opt;
+                }
+                renderTeacherDashboard();
+            }
         }
 
         function renderTeacherDashboard() {
             if (!isTeacherLoggedIn) return;
-            const fc = document.getElementById('filter-class').value; const so = document.getElementById('sort-order').value;
+            const fc = document.getElementById('filter-class').value;
+            const fp = document.getElementById('filter-package')?.value || 'ALL';
+            const so = document.getElementById('sort-order').value;
             const sq = document.getElementById('search-student').value.toLowerCase().trim();
-            let f = allSubmissions.filter(s => { if (!s.studentData) return false; const mc = fc === 'ALL' || s.studentData.class === fc; const ms = (s.studentData.name || '').toLowerCase().includes(sq) || String(s.studentData.no || '').includes(sq); return mc && ms; });
+
+            let f = allSubmissions.filter(s => {
+                if (!s.studentData) return false;
+                const mc = fc === 'ALL' || s.studentData.class === fc;
+                const mp = fp === 'ALL' || s.packageId === fp;
+                const ms = (s.studentData.name || '').toLowerCase().includes(sq) || String(s.studentData.no || '').includes(sq);
+                return mc && mp && ms;
+            });
             f.sort((a, b) => { if (so === 'NEWEST') return new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0); else if (so === 'SCORE_DESC') return (b.scores?.totalScore || 0) - (a.scores?.totalScore || 0); else if (so === 'SCORE_ASC') return (a.scores?.totalScore || 0) - (b.scores?.totalScore || 0); else if (so === 'NAME_ASC') return (a.studentData?.name || '').localeCompare(b.studentData?.name || ''); return 0; });
             const total = f.length; let sum = 0, pass = 0, min = total > 0 ? 100 : 0, max = 0;
             const kkm = getActivePackage()?.metadata?.kkm || 75;
@@ -1980,7 +2015,7 @@
             document.getElementById('stat-passed-students').textContent = `${pass} (${total > 0 ? Math.round((pass/total)*100) : 0}%)`;
             document.getElementById('stat-min-max').textContent = `${max} / ${total > 0 ? min : 0}`;
             const tb = document.getElementById('teacher-table-body'); tb.innerHTML = '';
-            if (!f.length) { tb.innerHTML = `<tr><td colspan="12" class="text-center py-12 text-slate-400"><i class="fa-solid fa-inbox text-3xl mb-2 block"></i>Belum ada data.</td></tr>`; return; }
+            if (!f.length) { tb.innerHTML = `<tr><td colspan="13" class="text-center py-12 text-slate-400"><i class="fa-solid fa-inbox text-3xl mb-2 block"></i>Belum ada data.</td></tr>`; return; }
             f.forEach((s, i) => {
                 const sc = s.scores?.totalScore || 0; const ip = sc >= kkm;
                 const dt = s.submittedAt ? new Date(s.submittedAt).toLocaleString('id-ID', { day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit' }) : '-';
@@ -1989,7 +2024,7 @@
                 let cheatBadge = '-';
                 if (autoSub) cheatBadge = `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-600 text-white">AUTO</span>`;
                 else if (vCount > 0) cheatBadge = `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500 text-white" title="${vCount} pelanggaran">${vCount}</span>`;
-                tr.innerHTML = `<td class="p-3 text-center font-bold text-slate-400">${i+1}</td><td class="p-3 font-semibold text-slate-800">${escapeHtml(s.studentData?.name || '-')}</td><td class="p-3"><span class="bg-slate-100 text-slate-700 font-medium px-2 py-0.5 rounded text-xs">${escapeHtml(s.studentData?.class || '-')}</span></td><td class="p-3 text-center font-semibold text-slate-600">${escapeHtml(String(s.studentData?.no || '-'))}</td><td class="p-3 text-center text-slate-600">${s.scores?.scorePG || 0}</td><td class="p-3 text-center text-slate-600">${s.scores?.scoreBS || 0}</td><td class="p-3 text-center text-slate-600">${s.scores?.scorePGK || 0}</td><td class="p-3 text-center font-black text-sm text-teal-800">${sc}</td><td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${ip?'bg-emerald-100 text-emerald-800':'bg-rose-100 text-rose-800'}">${ip?'TUNTAS':'REMIDI'}</span></td><td class="p-3 text-center">${cheatBadge}</td><td class="p-3 text-slate-500 text-[11px]">${dt}</td><td class="p-3 text-center"><div class="inline-flex gap-1"><button data-action="detail" data-id="${escapeHtml(s.docId||'')}" data-name="${escapeHtml(s.studentData?.name||'')}" class="px-2.5 py-1.5 bg-teal-100 hover:bg-teal-200 text-teal-800 rounded font-bold text-[11px] transition"><i class="fa-solid fa-eye"></i></button><button data-action="edit" data-id="${escapeHtml(s.docId||'')}" data-name="${escapeHtml(s.studentData?.name||'')}" class="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded font-bold text-[11px] transition"><i class="fa-solid fa-pen"></i></button><button data-action="delete" data-id="${escapeHtml(s.docId||'')}" data-name="${escapeHtml(s.studentData?.name||'')}" class="px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded font-bold text-[11px] transition"><i class="fa-solid fa-trash"></i></button></div></td>`;
+                tr.innerHTML = `<td class="p-3 text-center font-bold text-slate-400">${i+1}</td><td class="p-3 font-semibold text-slate-800">${escapeHtml(s.studentData?.name || '-')}</td><td class="p-3"><span class="bg-slate-100 text-slate-700 font-medium px-2 py-0.5 rounded text-xs">${escapeHtml(s.studentData?.class || '-')}</span></td><td class="p-3 text-center font-semibold text-slate-600">${escapeHtml(String(s.studentData?.no || '-'))}</td><td class="p-3 text-xs text-slate-600">${escapeHtml(s.packageName || '-')}</td><td class="p-3 text-center text-slate-600">${s.scores?.scorePG || 0}</td><td class="p-3 text-center text-slate-600">${s.scores?.scoreBS || 0}</td><td class="p-3 text-center text-slate-600">${s.scores?.scorePGK || 0}</td><td class="p-3 text-center font-black text-sm text-teal-800">${sc}</td><td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${ip?'bg-emerald-100 text-emerald-800':'bg-rose-100 text-rose-800'}">${ip?'TUNTAS':'REMIDI'}</span></td><td class="p-3 text-center">${cheatBadge}</td><td class="p-3 text-slate-500 text-[11px]">${dt}</td><td class="p-3 text-center"><div class="inline-flex gap-1"><button data-action="detail" data-id="${escapeHtml(s.docId||'')}" data-name="${escapeHtml(s.studentData?.name||'')}" class="px-2.5 py-1.5 bg-teal-100 hover:bg-teal-200 text-teal-800 rounded font-bold text-[11px] transition"><i class="fa-solid fa-eye"></i></button><button data-action="edit" data-id="${escapeHtml(s.docId||'')}" data-name="${escapeHtml(s.studentData?.name||'')}" class="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded font-bold text-[11px] transition"><i class="fa-solid fa-pen"></i></button><button data-action="delete" data-id="${escapeHtml(s.docId||'')}" data-name="${escapeHtml(s.studentData?.name||'')}" class="px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded font-bold text-[11px] transition"><i class="fa-solid fa-trash"></i></button></div></td>`;
                 tb.appendChild(tr);
             });
         }
@@ -2013,7 +2048,12 @@
                 s.violationLog.forEach(v => { vDiv.innerHTML += `<div class="text-rose-700">#${v.count} - ${new Date(v.timestamp).toLocaleString('id-ID')}: ${escapeHtml(v.reason)}</div>`; });
                 b.appendChild(vDiv);
             }
-            questions.forEach(q => {
+            
+            // Try to find the questions for this specific package, fallback to active if not found
+            const pack = questionPackages.find(p => p.id === s.packageId);
+            const qs = pack ? pack.questions : questions;
+            
+            qs.forEach(q => {
                 const ua = s.userAnswers ? s.userAnswers[q.id] : null; let ok = false;
                 if (q.type === 'PG' || q.type === 'BS') ok = ua === q.answer;
                 else if (q.type === 'PGK') { if (Array.isArray(ua)) ok = [...ua].sort().join('') === [...q.answer].sort().join(''); }
@@ -2049,7 +2089,7 @@
             const newId = `${nc}_${nno}_${nn.replace(/\s+/g,'_').toLowerCase()}`;
             if (!confirm(`Simpan? Nama: ${old.studentData?.name} → ${nn}`)) return;
             try {
-                const payload = { id: newId, student_data: { name: nn, class: nc, no: nno }, user_answers: old.userAnswers || {}, scores: old.scores || {}, submitted_at: old.submittedAt || new Date().toISOString(), package_id: old.packageId || activeQuestionPackageId, violation_log: old.violationLog || [], auto_submitted: old.autoSubmitted || false, auto_submit_reason: old.autoSubmitReason || null };
+                const payload = { id: newId, student_data: { name: nn, class: nc, no: nno }, user_answers: old.userAnswers || {}, scores: old.scores || {}, submitted_at: old.submittedAt || new Date().toISOString(), package_id: old.packageId || activeQuestionPackageId, package_name: old.packageName || getActivePackage()?.metadata?.examName || null, violation_log: old.violationLog || [], auto_submitted: old.autoSubmitted || false, auto_submit_reason: old.autoSubmitReason || null };
                 if (newId !== oldId) {
                     const cf = allSubmissions.find(x => x.docId === newId);
                     if (cf) { if (!confirm(`Sudah ada "${cf.studentData?.name}". Timpa?`)) return; await supabaseClient.from('submissions').delete().eq('id', newId); }
@@ -2060,15 +2100,57 @@
             } catch (err) { alert('Gagal: ' + err.message); }
         }
 
-        function exportTeacherDataToCSV() {
-            if (!allSubmissions.length) return alert('Kosong!');
-            let csv = "data:text/csv;charset=utf-8,No,Nama,Kelas,Absen,PG,BS,PGK,Total,Status,Pelanggaran,AutoSubmit,Waktu\n";
+        function exportTeacherDataToExcel() {
+            if (!window.XLSX) return alert('Library Excel belum tersedia.');
+            const fc = document.getElementById('filter-class').value;
+            const fp = document.getElementById('filter-package')?.value || 'ALL';
+            const so = document.getElementById('sort-order').value;
+            const sq = document.getElementById('search-student').value.toLowerCase().trim();
             const kkm = getActivePackage()?.metadata?.kkm || 75;
-            allSubmissions.forEach((s, i) => {
-                const sc = s.scores?.totalScore || 0;
-                csv += `${i+1},"${(s.studentData?.name||'').replace(/"/g,'""')}",${s.studentData?.class||''},${s.studentData?.no||''},${s.scores?.scorePG||0},${s.scores?.scoreBS||0},${s.scores?.scorePGK||0},${sc},${sc>=kkm?'TUNTAS':'REMIDI'},${s.violationLog?.length||0},${s.autoSubmitted?'YA':'TIDAK'},"${s.submittedAt?new Date(s.submittedAt).toLocaleString('id-ID'):''}"\n`;
+
+            let f = allSubmissions.filter(s => {
+                if (!s.studentData) return false;
+                const mc = fc === 'ALL' || s.studentData.class === fc;
+                const mp = fp === 'ALL' || s.packageId === fp;
+                const ms = (s.studentData.name || '').toLowerCase().includes(sq) || String(s.studentData.no || '').includes(sq);
+                return mc && mp && ms;
             });
-            const l = document.createElement('a'); l.href = encodeURI(csv); l.download = `Hasil_${new Date().toISOString().slice(0,10)}.csv`; document.body.appendChild(l); l.click(); document.body.removeChild(l);
+
+            if (!f.length) return alert('Tidak ada data untuk diexport!');
+
+            // Sort same as table
+            f.sort((a, b) => { 
+                if (so === 'NEWEST') return new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0); 
+                else if (so === 'SCORE_DESC') return (b.scores?.totalScore || 0) - (a.scores?.totalScore || 0); 
+                else if (so === 'SCORE_ASC') return (a.scores?.totalScore || 0) - (b.scores?.totalScore || 0); 
+                else if (so === 'NAME_ASC') return (a.studentData?.name || '').localeCompare(b.studentData?.name || ''); 
+                return 0; 
+            });
+
+            const data = f.map((s, i) => ({
+                "No": i + 1,
+                "Nama": s.studentData?.name || '-',
+                "Kelas": s.studentData?.class || '-',
+                "Absen": s.studentData?.no || '-',
+                "Paket Ujian": s.packageName || '-',
+                "PG": s.scores?.scorePG || 0,
+                "B/S": s.scores?.scoreBS || 0,
+                "PGK": s.scores?.scorePGK || 0,
+                "Total Nilai": s.scores?.totalScore || 0,
+                "Status": (s.scores?.totalScore || 0) >= kkm ? 'TUNTAS' : 'REMIDI',
+                "Pelanggaran": s.violationLog?.length || 0,
+                "Auto Submit": s.autoSubmitted ? 'YA' : 'TIDAK',
+                "Waktu Submit": s.submittedAt ? new Date(s.submittedAt).toLocaleString('id-ID') : '-'
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            // Set column widths
+            const cols = Object.keys(data[0]).map(k => ({ wch: Math.max(k.length, 15) }));
+            ws['!cols'] = cols;
+            
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Hasil Ujian");
+            XLSX.writeFile(wb, `Hasil_Ujian_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
         function promptResetExam() {
