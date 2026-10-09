@@ -2083,12 +2083,39 @@
         function submitExam(isAutoSubmit = false, isTimeUp = false) {
             closeSubmitModal(); clearInterval(timerInterval); stopAntiCheat();
             let sPG = 0, sBS = 0, sPGK = 0;
+            
             questions.forEach(q => {
                 const ua = userAnswers[q.id];
-                if (q.type === 'PG') { if (ua === q.answer) sPG += q.points; }
-                else if (q.type === 'BS') { if (ua === q.answer) sBS += q.points; }
-                else if (q.type === 'PGK') { if (Array.isArray(ua) && [...ua].sort().join('') === [...q.answer].sort().join('')) sPGK += q.points; }
+                if (q.type === 'PG') { 
+                    if (ua === q.answer) sPG += q.points; 
+                }
+                else if (q.type === 'BS') { 
+                    if (ua === q.answer) sBS += q.points; 
+                }
+                else if (q.type === 'PGK') {
+                    // Sistem Penilaian Parsial PGK
+                    const correctAns = Array.isArray(q.answer) ? q.answer : [];
+                    const studentAns = Array.isArray(ua) ? ua : [];
+                    
+                    // Hitung poin per opsi yang benar
+                    const pointPerOption = q.points / correctAns.length;
+                    let tempScore = 0;
+                    let hasWrong = false;
+                    
+                    studentAns.forEach(a => {
+                        if (correctAns.includes(a)) {
+                            tempScore += pointPerOption;
+                        } else {
+                            // Jika ada 1 jawaban salah, langsung batalkan poin (anti tebak-tebakan)
+                            hasWrong = true;
+                        }
+                    });
+                    
+                    if (hasWrong) tempScore = 0;
+                    sPGK += Math.max(0, Math.round(tempScore)); // Dibulatkan agar tidak desimal
+                }
             });
+            
             const total = sPG + sBS + sPGK;
             const scores = { scorePG: sPG, scoreBS: sBS, scorePGK: sPGK, totalScore: total };
             const attemptData = { studentData, userAnswers, scores, submittedAt: new Date().toISOString(), violationLog, autoSubmitted: isAutoSubmit, autoSubmitReason: isAutoSubmit ? 'Pelanggaran Anti-Cheat' : (isTimeUp ? 'Waktu Habis' : null) };
@@ -2161,14 +2188,40 @@
         function renderPembahasan() {
             const c = document.getElementById('pembahasan-list'); c.innerHTML = '';
             questions.forEach(q => {
-                const ua = userAnswers[q.id]; let ok = false;
-                if (q.type === 'PG' || q.type === 'BS') ok = ua === q.answer;
-                else if (q.type === 'PGK') { if (Array.isArray(ua)) ok = [...ua].sort().join('') === [...q.answer].sort().join(''); }
+                const ua = userAnswers[q.id]; 
+                let ok = false;
+                let obtainedPoints = 0;
+                
+                if (q.type === 'PG' || q.type === 'BS') {
+                    ok = ua === q.answer;
+                    if (ok) obtainedPoints = q.points;
+                } else if (q.type === 'PGK') {
+                    const correctAns = Array.isArray(q.answer) ? q.answer : [];
+                    const studentAns = Array.isArray(ua) ? ua : [];
+                    const ppo = q.points / correctAns.length;
+                    let tempScore = 0;
+                    let hasWrong = false;
+                    
+                    studentAns.forEach(a => {
+                        if (correctAns.includes(a)) tempScore += ppo;
+                        else hasWrong = true;
+                    });
+                    
+                    if (hasWrong) tempScore = 0;
+                    obtainedPoints = Math.max(0, Math.round(tempScore));
+                    ok = obtainedPoints === q.points; // Benar semua jika dapat poin maksimal
+                }
+                
                 const card = document.createElement('div');
-                card.className = `p-5 rounded-2xl border bg-white shadow-sm space-y-3 ${ok ? 'border-emerald-200' : 'border-rose-200'}`;
+                card.className = `p-5 rounded-2xl border bg-white shadow-sm space-y-3 ${ok ? 'border-emerald-200' : (obtainedPoints > 0 ? 'border-amber-200' : 'border-rose-200')}`;
+                
                 let ud = Array.isArray(ua) ? (ua.length ? ua.sort().join(', ') : 'Tidak Dijawab') : (ua || 'Tidak Dijawab');
                 let kd = Array.isArray(q.answer) ? q.answer.sort().join(', ') : q.answer;
-                card.innerHTML = `<div class="flex items-center justify-between border-b pb-2"><span class="font-bold text-sm text-slate-800">Soal #${q.id} (${q.section})</span><span class="px-2.5 py-0.5 rounded text-xs font-bold ${ok ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">${ok ? 'BENAR (+'+q.points+')' : 'SALAH (+0)'}</span></div><div class="text-xs md:text-sm text-slate-700 leading-relaxed">${q.question}</div><div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs bg-slate-50 p-3 rounded-lg border border-slate-200"><div><span class="text-slate-500 font-medium">Jawaban Anda:</span> <strong class="${ok?'text-emerald-700':'text-rose-700'}">${ud}</strong></div><div><span class="text-slate-500 font-medium">Kunci Jawaban:</span> <strong class="text-teal-700">${kd}</strong></div></div><div class="text-xs text-slate-600 bg-amber-50/60 p-3 rounded-lg border border-amber-200/60"><strong class="text-amber-900 block mb-1"><i class="fa-solid fa-lightbulb mr-1"></i>Pembahasan:</strong>${q.pembahasan}</div>`;
+                
+                let statusText = ok ? `BENAR (+${obtainedPoints})` : (obtainedPoints > 0 ? `KURANG (+${obtainedPoints})` : 'SALAH (+0)');
+                let statusClass = ok ? 'bg-emerald-100 text-emerald-800' : (obtainedPoints > 0 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800');
+                
+                card.innerHTML = `<div class="flex items-center justify-between border-b pb-2"><span class="font-bold text-sm text-slate-800">Soal #${q.id} (${q.section})</span><span class="px-2.5 py-0.5 rounded text-xs font-bold ${statusClass}">${statusText}</span></div><div class="text-xs md:text-sm text-slate-700 leading-relaxed">${q.question}</div><div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs bg-slate-50 p-3 rounded-lg border border-slate-200"><div><span class="text-slate-500 font-medium">Jawaban Anda:</span> <strong class="${ok?'text-emerald-700':(obtainedPoints>0?'text-amber-700':'text-rose-700')}">${ud}</strong></div><div><span class="text-slate-500 font-medium">Kunci Jawaban:</span> <strong class="text-teal-700">${kd}</strong></div></div><div class="text-xs text-slate-600 bg-amber-50/60 p-3 rounded-lg border border-amber-200/60"><strong class="text-amber-900 block mb-1"><i class="fa-solid fa-lightbulb mr-1"></i>Pembahasan:</strong>${q.pembahasan}</div>`;
                 c.appendChild(card);
             });
         }
@@ -2272,12 +2325,13 @@
             catch (err) { alert('Error: ' + err.message); }
         }
 
-        function showStudentDetailModal(docId) {
+                function showStudentDetailModal(docId) {
             const s = allSubmissions.find(x => x.docId === docId);
             if (!s) { alert('Tidak ditemukan!'); return; }
             document.getElementById('detail-student-title').textContent = `${s.studentData?.name || '-'} (${s.studentData?.class || '-'} / Absen ${s.studentData?.no || '-'})`;
             document.getElementById('detail-student-score').textContent = `Skor: ${s.scores?.totalScore || 0}/100${s.autoSubmitted ? ' • AUTO-SUBMIT' : ''}`;
             const b = document.getElementById('detail-student-body'); b.innerHTML = '';
+            
             if (s.violationLog && s.violationLog.length) {
                 const vDiv = document.createElement('div');
                 vDiv.className = 'p-3 rounded-xl border border-rose-200 bg-rose-50 text-xs space-y-1';
@@ -2285,17 +2339,43 @@
                 s.violationLog.forEach(v => { vDiv.innerHTML += `<div class="text-rose-700">#${v.count} - ${new Date(v.timestamp).toLocaleString('id-ID')}: ${escapeHtml(v.reason)}</div>`; });
                 b.appendChild(vDiv);
             }
+            
             const pack = questionPackages.find(p => p.id === s.packageId);
             const qs = pack ? pack.questions : questions;
             qs.forEach(q => {
-                const ua = s.userAnswers ? s.userAnswers[q.id] : null; let ok = false;
-                if (q.type === 'PG' || q.type === 'BS') ok = ua === q.answer;
-                else if (q.type === 'PGK') { if (Array.isArray(ua)) ok = [...ua].sort().join('') === [...q.answer].sort().join(''); }
+                const ua = s.userAnswers ? s.userAnswers[q.id] : null; 
+                let ok = false;
+                let obtainedPoints = 0;
+                
+                if (q.type === 'PG' || q.type === 'BS') {
+                    ok = ua === q.answer;
+                    if (ok) obtainedPoints = q.points;
+                } else if (q.type === 'PGK') {
+                    const correctAns = Array.isArray(q.answer) ? q.answer : [];
+                    const studentAns = Array.isArray(ua) ? ua : [];
+                    const ppo = q.points / correctAns.length;
+                    let tempScore = 0;
+                    let hasWrong = false;
+                    
+                    studentAns.forEach(a => {
+                        if (correctAns.includes(a)) tempScore += ppo;
+                        else hasWrong = true;
+                    });
+                    
+                    if (hasWrong) tempScore = 0;
+                    obtainedPoints = Math.max(0, Math.round(tempScore));
+                    ok = obtainedPoints === q.points;
+                }
+                
                 let ud = Array.isArray(ua) ? (ua.join(', ') || '-') : (ua || '-');
                 let kd = Array.isArray(q.answer) ? q.answer.join(', ') : q.answer;
                 const d = document.createElement('div');
-                d.className = `p-3 rounded-xl border text-xs space-y-1.5 ${ok ? 'bg-emerald-50/60 border-emerald-200' : 'bg-rose-50/60 border-rose-200'}`;
-                d.innerHTML = `<div class="flex justify-between font-bold items-center"><span class="text-slate-800">Soal #${q.id} <span class="text-[10px] font-normal text-slate-500">[${q.type}]</span></span><span class="px-2 py-0.5 rounded text-[10px] ${ok?'bg-emerald-200 text-emerald-900':'bg-rose-200 text-rose-900'}">${ok?'<i class="fa-solid fa-check mr-1"></i>BENAR':'<i class="fa-solid fa-xmark mr-1"></i>SALAH'}</span></div><div class="text-slate-600 leading-relaxed">${q.question.replace(/<[^>]*>?/gm,' ').substring(0,150)}${q.question.length>150?'...':''}</div><div class="flex flex-wrap gap-x-4 gap-y-1 pt-1.5 border-t border-slate-200/60 mt-1.5"><span class="text-slate-500">Jawaban: <strong class="${ok?'text-emerald-700':'text-rose-700'}">${ud}</strong></span><span class="text-slate-500">Kunci: <strong class="text-teal-700">${kd}</strong></span></div>`;
+                
+                let statusText = ok ? 'BENAR' : (obtainedPoints > 0 ? `KURANG (+${obtainedPoints})` : 'SALAH');
+                let statusClass = ok ? 'bg-emerald-200 text-emerald-900' : (obtainedPoints > 0 ? 'bg-amber-200 text-amber-900' : 'bg-rose-200 text-rose-900');
+                
+                d.className = `p-3 rounded-xl border text-xs space-y-1.5 ${ok ? 'bg-emerald-50/60 border-emerald-200' : (obtainedPoints > 0 ? 'bg-amber-50/60 border-amber-200' : 'bg-rose-50/60 border-rose-200')}`;
+                d.innerHTML = `<div class="flex justify-between font-bold items-center"><span class="text-slate-800">Soal #${q.id} <span class="text-[10px] font-normal text-slate-500">[${q.type}]</span></span><span class="px-2 py-0.5 rounded text-[10px] ${statusClass}">${statusText}</span></div><div class="text-slate-600 leading-relaxed">${q.question.replace(/<[^>]*>?/gm,' ').substring(0,150)}${q.question.length>150?'...':''}</div><div class="flex flex-wrap gap-x-4 gap-y-1 pt-1.5 border-t border-slate-200/60 mt-1.5"><span class="text-slate-500">Jawaban: <strong class="${ok?'text-emerald-700':(obtainedPoints>0?'text-amber-700':'text-rose-700')}">${ud}</strong></span><span class="text-slate-500">Kunci: <strong class="text-teal-700">${kd}</strong></span></div>`;
                 b.appendChild(d);
             });
             const m = document.getElementById('modal-student-detail'); m.classList.remove('hidden'); m.classList.add('flex');
