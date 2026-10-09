@@ -2087,32 +2087,27 @@
             questions.forEach(q => {
                 const ua = userAnswers[q.id];
                 if (q.type === 'PG') { 
-                    if (ua === q.answer) sPG += q.points; 
+                    if (ua === q.answer) sPG += Number(q.points) || 0; 
                 }
                 else if (q.type === 'BS') { 
-                    if (ua === q.answer) sBS += q.points; 
+                    if (ua === q.answer) sBS += Number(q.points) || 0; 
                 }
                 else if (q.type === 'PGK') {
-                    // Sistem Penilaian Parsial PGK
                     const correctAns = Array.isArray(q.answer) ? q.answer : [];
                     const studentAns = Array.isArray(ua) ? ua : [];
-                    
-                    // Hitung poin per opsi yang benar
-                    const pointPerOption = q.points / correctAns.length;
                     let tempScore = 0;
                     let hasWrong = false;
                     
                     studentAns.forEach(a => {
                         if (correctAns.includes(a)) {
-                            tempScore += pointPerOption;
+                            tempScore += 1; // Setiap pernyataan benar yang dipilih bernilai 1 poin
                         } else {
-                            // Jika ada 1 jawaban salah, langsung batalkan poin (anti tebak-tebakan)
-                            hasWrong = true;
+                            hasWrong = true; // Jika ada jawaban salah, poin soal ini dibatalkan
                         }
                     });
                     
                     if (hasWrong) tempScore = 0;
-                    sPGK += Math.max(0, Math.round(tempScore)); // Dibulatkan agar tidak desimal
+                    sPGK += tempScore;
                 }
             });
             
@@ -2199,25 +2194,27 @@
                 const ua = userAnswers[q.id]; 
                 let ok = false;
                 let obtainedPoints = 0;
+                let maxPoints = 0;
                 
                 if (q.type === 'PG' || q.type === 'BS') {
+                    maxPoints = Number(q.points) || 0;
                     ok = ua === q.answer;
-                    if (ok) obtainedPoints = q.points;
+                    if (ok) obtainedPoints = maxPoints;
                 } else if (q.type === 'PGK') {
                     const correctAns = Array.isArray(q.answer) ? q.answer : [];
                     const studentAns = Array.isArray(ua) ? ua : [];
-                    const ppo = q.points / correctAns.length;
+                    maxPoints = correctAns.length; // Maksimal poin PGK = jumlah pernyataan benar
                     let tempScore = 0;
                     let hasWrong = false;
                     
                     studentAns.forEach(a => {
-                        if (correctAns.includes(a)) tempScore += ppo;
+                        if (correctAns.includes(a)) tempScore += 1;
                         else hasWrong = true;
                     });
                     
                     if (hasWrong) tempScore = 0;
-                    obtainedPoints = Math.max(0, Math.round(tempScore));
-                    ok = obtainedPoints === q.points; // Benar semua jika dapat poin maksimal
+                    obtainedPoints = tempScore;
+                    ok = obtainedPoints === maxPoints; // Benar semua jika dapat poin maksimal
                 }
                 
                 const card = document.createElement('div');
@@ -2349,7 +2346,7 @@
             catch (err) { alert('Error: ' + err.message); }
         }
 
-                function showStudentDetailModal(docId) {
+        function showStudentDetailModal(docId) {
             const s = allSubmissions.find(x => x.docId === docId);
             if (!s) { alert('Tidak ditemukan!'); return; }
             document.getElementById('detail-student-title').textContent = `${s.studentData?.name || '-'} (${s.studentData?.class || '-'} / Absen ${s.studentData?.no || '-'})`;
@@ -2370,25 +2367,27 @@
                 const ua = s.userAnswers ? s.userAnswers[q.id] : null; 
                 let ok = false;
                 let obtainedPoints = 0;
+                let maxPoints = 0;
                 
                 if (q.type === 'PG' || q.type === 'BS') {
+                    maxPoints = Number(q.points) || 0;
                     ok = ua === q.answer;
-                    if (ok) obtainedPoints = q.points;
+                    if (ok) obtainedPoints = maxPoints;
                 } else if (q.type === 'PGK') {
                     const correctAns = Array.isArray(q.answer) ? q.answer : [];
                     const studentAns = Array.isArray(ua) ? ua : [];
-                    const ppo = q.points / correctAns.length;
+                    maxPoints = correctAns.length;
                     let tempScore = 0;
                     let hasWrong = false;
                     
                     studentAns.forEach(a => {
-                        if (correctAns.includes(a)) tempScore += ppo;
+                        if (correctAns.includes(a)) tempScore += 1;
                         else hasWrong = true;
                     });
                     
                     if (hasWrong) tempScore = 0;
-                    obtainedPoints = Math.max(0, Math.round(tempScore));
-                    ok = obtainedPoints === q.points;
+                    obtainedPoints = tempScore;
+                    ok = obtainedPoints === maxPoints;
                 }
                 
                 let ud = Array.isArray(ua) ? (ua.join(', ') || '-') : (ua || '-');
@@ -2404,6 +2403,7 @@
             });
             const m = document.getElementById('modal-student-detail'); m.classList.remove('hidden'); m.classList.add('flex');
         }
+
         function closeStudentDetailModal() { const m = document.getElementById('modal-student-detail'); m.classList.add('hidden'); m.classList.remove('flex'); }
 
         function openEditStudentModal(docId) {
