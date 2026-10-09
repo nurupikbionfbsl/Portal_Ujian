@@ -598,6 +598,34 @@
         </div>
     </div>
 
+    <!-- MODAL: QUESTION VIEW (LIHAT SOAL - READ ONLY) -->
+    <div id="modal-question-view" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[76] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 text-slate-800 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div class="flex items-center gap-2">
+                    <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-eye text-blue-600"></i> Lihat Soal</h3>
+                    <span id="view-q-counter" class="text-xs text-slate-400 font-normal">Soal 1 dari 1</span>
+                </div>
+                <button onclick="closeQuestionViewModal()" class="text-slate-400 hover:text-slate-600 text-lg w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <span id="view-q-type-badge" class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-md">Pilihan Ganda</span>
+                <span id="view-q-section-badge" class="bg-slate-100 text-slate-600 text-xs font-semibold px-2.5 py-1 rounded-md">Bagian</span>
+                <span class="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Bobot: <span id="view-q-points" class="text-teal-700 font-bold">3 Poin</span></span>
+            </div>
+            <div id="view-q-content" class="flex-grow overflow-y-auto text-sm md:text-base text-slate-800 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200"></div>
+            <div id="view-q-options" class="space-y-2"></div>
+            <div id="view-q-pembahasan" class="text-xs text-slate-600 bg-amber-50/60 p-3 rounded-lg border border-amber-200/60"></div>
+            <div class="flex items-center justify-between gap-3 pt-3 border-t">
+                <button id="view-btn-prev" onclick="navigateViewQuestion(-1)" class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg text-sm transition flex items-center gap-2"><i class="fa-solid fa-arrow-left"></i> Sebelumnya</button>
+                <div class="flex gap-2">
+                    <button onclick="openQuestionEditModal(currentViewQId)" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg text-sm transition flex items-center gap-2"><i class="fa-solid fa-pen"></i> Edit Soal Ini</button>
+                </div>
+                <button id="view-btn-next" onclick="navigateViewQuestion(1)" class="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg text-sm transition flex items-center gap-2">Selanjutnya <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL: QUESTION EDIT (TAMBAH/EDIT SOAL & GAMBAR) -->
     <div id="modal-question-edit" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[75] hidden items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 text-slate-800 max-h-[90vh] overflow-y-auto">
@@ -758,6 +786,8 @@
         let pendingImportedQuestions = null;
         let isMasterDataSyncing = false;
         let isQuestionDataSyncing = false;
+        let currentViewPackId = null;
+        let currentViewQId = null;
 
         /* ==========================================================================
            3. ANTI-CHEAT CONFIG & STATE
@@ -1101,10 +1131,6 @@
             try {
                 const { data, error } = await supabaseClient.from('question_packages').select('*');
                 if (error) throw error;
-
-                /* [FIX] Selalu proses data cloud, TIDAK peduli jumlahnya.
-                   Sebelumnya: if (data && data.length) — jika cloud punya lebih sedikit paket
-                   (karena hapus), tidak tersinkron ke device lain. */
                 if (data) {
                     const cloudPackages = data.map(p => ({
                         id: p.id,
@@ -1112,16 +1138,11 @@
                         createdAt: p.created_at,
                         questions: p.questions || []
                     }));
-
-                    /* [FIX] Bandingkan IDs untuk deteksi penambahan/penghapusan paket */
                     const currentIds = questionPackages.map(p => p.id).sort().join(',');
                     const cloudIds = cloudPackages.map(p => p.id).sort().join(',');
                     const currentHash = JSON.stringify(questionPackages);
                     const cloudHash = JSON.stringify(cloudPackages);
-
-                    /* [FIX] Update jika ada perbedaan (termasuk paket yang dihapus dari cloud) */
                     if (currentIds !== cloudIds || currentHash !== cloudHash) {
-                        /* Jangan wipe lokal jika cloud kosong (kemungkinan error fetch) */
                         if (cloudPackages.length > 0) {
                             questionPackages = cloudPackages;
                             if (!activeQuestionPackageId || !questionPackages.some(p => p.id === activeQuestionPackageId)) {
@@ -1246,20 +1267,17 @@
             alert(`Paket aktif: ${pack.metadata?.examName || pack.name}\n${questions.length} soal siap digunakan.`);
         }
 
-        /* [FIX] deleteQuestionPackage: sekarang async, await cloud delete, error handling */
         async function deleteQuestionPackage(id) {
             if (questionPackages.length <= 1) return alert('Minimal 1 paket harus tersisa.');
             const pack = questionPackages.find(p => p.id === id);
             if (!pack || !confirm(`Hapus "${pack.metadata?.examName || pack.name}"?\n\nPaket akan dihapus permanen dari semua device.`)) return;
-
-            /* [FIX] Step 1: Hapus dari CLOUD DULU dengan await + error handling */
             if (supabaseClient) {
                 try {
                     const { error } = await supabaseClient.from('question_packages').delete().eq('id', id);
                     if (error) {
                         console.error('Gagal hapus dari cloud:', error);
                         showToast('Gagal menghapus dari cloud: ' + error.message, 'error');
-                        return; /* Jangan hapus lokal jika cloud gagal */
+                        return;
                     }
                 } catch (err) {
                     console.error('Gagal hapus dari cloud:', err);
@@ -1267,15 +1285,13 @@
                     return;
                 }
             }
-
-            /* [FIX] Step 2: Cloud sukses -> hapus lokal */
             questionPackages = questionPackages.filter(p => p.id !== id);
             if (id === activeQuestionPackageId) {
                 activeQuestionPackageId = questionPackages[0].id;
                 questions = cloneQuestions(questionPackages[0].questions || []);
                 updateDynamicUI();
             }
-            persistQuestionPackages(false); /* false = jangan re-sync ke cloud (sudah dihapus) */
+            persistQuestionPackages(false);
             renderQuestionPackages();
             renderActivePackageHighlight();
             showToast(`Paket "${pack.metadata?.examName || pack.name}" berhasil dihapus dari semua device!`, 'success');
@@ -1312,9 +1328,10 @@
         }
 
         /* ==========================================================================
-           11. QUESTION MANAGER (EDIT & UPLOAD GAMBAR)
+           11. QUESTION MANAGER (BANK SOAL + VIEW SOAL)
            ========================================================================== */
         function openQuestionManager(packId) {
+            currentViewPackId = packId;
             const m = document.getElementById('modal-question-manager');
             m.classList.remove('hidden'); m.classList.add('flex');
             renderQuestionList(packId);
@@ -1323,6 +1340,8 @@
             const m = document.getElementById('modal-question-manager');
             m.classList.add('hidden'); m.classList.remove('flex');
         }
+
+        /* [NEW] renderQuestionList: tambah tombol Lihat (eye icon) untuk setiap soal */
         function renderQuestionList(packId) {
             const pack = questionPackages.find(p => p.id === packId);
             const body = document.getElementById('question-list-body');
@@ -1330,28 +1349,113 @@
                 body.innerHTML = `<div class="text-center py-8 text-slate-400"><i class="fa-solid fa-inbox text-3xl block mb-2"></i>Belum ada soal.</div>`;
                 return;
             }
-            body.innerHTML = pack.questions.map(q => {
-                const preview = q.question.replace(/<[^>]+>/g, ' ').substring(0, 80);
+            body.innerHTML = pack.questions.map((q, idx) => {
+                const preview = q.question.replace(/<[^>]+>/g, ' ').substring(0, 100);
                 return `<div class="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
                     <div class="flex-1 min-w-0 mr-3">
                         <p class="font-bold text-xs text-slate-800">#${q.id} [${q.type}] - ${q.points} Poin</p>
                         <p class="text-xs text-slate-500 truncate">${escapeHtml(preview)}...</p>
                     </div>
-                    <div class="flex gap-1">
-                        <button onclick="openQuestionEditModal(${q.id})" class="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded text-xs font-bold"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="deleteEditedQuestion(${q.id})" class="px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded text-xs font-bold"><i class="fa-solid fa-trash"></i></button>
+                    <div class="flex gap-1 shrink-0">
+                        <button onclick="openQuestionViewModal(${q.id})" title="Lihat Soal" class="px-2.5 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded text-xs font-bold"><i class="fa-solid fa-eye"></i></button>
+                        <button onclick="openQuestionEditModal(${q.id})" title="Edit Soal" class="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded text-xs font-bold"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteEditedQuestion(${q.id})" title="Hapus Soal" class="px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded text-xs font-bold"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </div>`;
             }).join('');
         }
 
-        function openQuestionEditModal(qId = null) {
-            const m = document.getElementById('modal-question-edit');
+        /* [NEW] openQuestionViewModal: buka modal lihat soal (read-only) */
+        function openQuestionViewModal(qId) {
+            currentViewQId = qId;
+            const pack = questionPackages.find(p => p.id === currentViewPackId) || getActivePackage();
+            if (!pack) return;
+            const qIdx = pack.questions.findIndex(q => q.id === qId);
+            if (qIdx < 0) return;
+            renderQuestionView(pack, qIdx);
+            const m = document.getElementById('modal-question-view');
             m.classList.remove('hidden'); m.classList.add('flex');
-            const pack = getActivePackage();
-            if (!pack) return alert('Pilih paket aktif dulu!');
+        }
+        function closeQuestionViewModal() {
+            const m = document.getElementById('modal-question-view');
+            m.classList.add('hidden'); m.classList.remove('flex');
+        }
 
+        /* [NEW] renderQuestionView: render soal + opsi + kunci + pembahasan */
+        function renderQuestionView(pack, idx) {
+            const qs = pack.questions;
+            const q = qs[idx];
+            if (!q) return;
+
+            document.getElementById('view-q-counter').textContent = `Soal ${idx + 1} dari ${qs.length}`;
+            const typeLabels = { PG: 'Pilihan Ganda', BS: 'Benar / Salah', PGK: 'PG Kompleks' };
+            document.getElementById('view-q-type-badge').textContent = typeLabels[q.type] || q.type;
+            document.getElementById('view-q-section-badge').textContent = q.section || '-';
+            document.getElementById('view-q-points').textContent = `${q.points || 1} Poin`;
+            document.getElementById('view-q-content').innerHTML = q.question;
+
+            const oc = document.getElementById('view-q-options');
+            oc.innerHTML = '';
+            let answers = q.answer;
+            if (!Array.isArray(answers) && answers) answers = [answers];
+
+            if (q.type === 'BS') {
+                q.options.forEach(opt => {
+                    const isAns = answers.includes(opt);
+                    const div = document.createElement('div');
+                    div.className = `flex items-center p-3.5 rounded-xl border ${isAns ? 'bg-emerald-50 border-emerald-500 text-emerald-900 font-medium' : 'bg-white border-slate-200 text-slate-700'}`;
+                    div.innerHTML = `<span class="w-5 h-5 flex items-center justify-center mr-3 text-xs rounded-full ${isAns ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'}">${isAns ? '<i class="fa-solid fa-check"></i>' : ''}</span><span class="text-sm md:text-base">${escapeHtml(opt)}</span>${isAns ? '<span class="ml-auto text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">KUNCI</span>' : ''}`;
+                    oc.appendChild(div);
+                });
+            } else {
+                q.options.forEach(opt => {
+                    const letter = opt.charAt(0);
+                    const isAns = answers.includes(letter);
+                    const div = document.createElement('div');
+                    div.className = `flex items-center p-3.5 rounded-xl border ${isAns ? 'bg-emerald-50 border-emerald-500 text-emerald-900 font-medium ring-2 ring-emerald-500/20' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`;
+                    const icon = q.type === 'PGK'
+                        ? `<span class="w-5 h-5 flex items-center justify-center mr-3 text-xs rounded ${isAns ? 'bg-emerald-500 text-white' : 'border border-slate-300 text-slate-400'}">${isAns ? '<i class="fa-solid fa-check"></i>' : ''}</span>`
+                        : `<span class="w-5 h-5 flex items-center justify-center mr-3 text-xs rounded-full ${isAns ? 'bg-emerald-500 text-white' : 'border border-slate-300 text-slate-400'}">${isAns ? '<i class="fa-solid fa-check"></i>' : ''}</span>`;
+                    div.innerHTML = `${icon}<span class="text-sm md:text-base">${opt}</span>${isAns ? '<span class="ml-auto text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">KUNCI</span>' : ''}`;
+                    oc.appendChild(div);
+                });
+            }
+
+            const pb = document.getElementById('view-q-pembahasan');
+            if (q.pembahasan) {
+                pb.innerHTML = `<strong class="text-amber-900 block mb-1"><i class="fa-solid fa-lightbulb mr-1"></i>Pembahasan:</strong>${q.pembahasan}`;
+                pb.classList.remove('hidden');
+            } else {
+                pb.innerHTML = '';
+                pb.classList.add('hidden');
+            }
+
+            const btnPrev = document.getElementById('view-btn-prev');
+            const btnNext = document.getElementById('view-btn-next');
+            btnPrev.disabled = idx === 0;
+            btnPrev.classList.toggle('opacity-50', idx === 0);
+            btnNext.disabled = idx === qs.length - 1;
+            btnNext.classList.toggle('opacity-50', idx === qs.length - 1);
+        }
+
+        /* [NEW] navigateViewQuestion: pindah soal di modal view */
+        function navigateViewQuestion(dir) {
+            const pack = questionPackages.find(p => p.id === currentViewPackId) || getActivePackage();
+            if (!pack) return;
+            const qs = pack.questions;
+            let idx = qs.findIndex(q => q.id === currentViewQId);
+            if (idx < 0) return;
+            idx += dir;
+            if (idx < 0 || idx >= qs.length) return;
+            currentViewQId = qs[idx].id;
+            renderQuestionView(pack, idx);
+        }
+
+        function openQuestionEditModal(qId = null) {
             if (qId) {
+                closeQuestionViewModal();
+                const pack = questionPackages.find(p => p.id === currentViewPackId) || getActivePackage();
+                if (!pack) return;
                 const q = pack.questions.find(x => x.id === qId);
                 if (!q) return;
                 document.getElementById('q-edit-title').innerHTML = `<i class="fa-solid fa-pen text-blue-600"></i> Edit Soal #${q.id}`;
@@ -1363,6 +1467,8 @@
                 document.getElementById('q-edit-pembahasan').value = q.pembahasan || '';
                 renderQuestionEditOptions(q.type, q);
             } else {
+                const pack = getActivePackage();
+                if (!pack) return alert('Pilih paket aktif dulu!');
                 document.getElementById('q-edit-title').innerHTML = `<i class="fa-solid fa-plus text-blue-600"></i> Tambah Soal Baru`;
                 document.getElementById('q-edit-id').value = '';
                 document.getElementById('q-edit-type').value = 'PG';
@@ -1372,6 +1478,8 @@
                 document.getElementById('q-edit-pembahasan').value = '';
                 renderQuestionEditOptions('PG', null);
             }
+            const m = document.getElementById('modal-question-edit');
+            m.classList.remove('hidden'); m.classList.add('flex');
         }
         function closeQuestionEditModal() {
             const m = document.getElementById('modal-question-edit');
@@ -1392,7 +1500,6 @@
                 let opts = existingQ ? existingQ.options : [];
                 let ans = existingQ ? existingQ.answer : [];
                 if (!Array.isArray(ans) && ans) ans = [ans];
-
                 for (let i = 0; i < 5; i++) {
                     let letter = String.fromCharCode(65 + i);
                     let val = opts[i] ? opts[i].replace(/^[A-E]\.\s*/, '') : '';
@@ -1460,7 +1567,7 @@
 
             if (!text) return alert('Pertanyaan tidak boleh kosong!');
 
-            const pack = getActivePackage();
+            const pack = questionPackages.find(p => p.id === currentViewPackId) || getActivePackage();
             if (!pack) return;
 
             if (qId) {
@@ -1483,7 +1590,7 @@
 
         async function deleteEditedQuestion(qId) {
             if (!confirm('Hapus soal ini?')) return;
-            const pack = getActivePackage();
+            const pack = questionPackages.find(p => p.id === currentViewPackId) || getActivePackage();
             if (!pack) return;
             pack.questions = pack.questions.filter(q => q.id !== qId);
             questions = cloneQuestions(pack.questions);
@@ -1834,7 +1941,7 @@
         }
 
         /* ==========================================================================
-           18. RENDER QUESTION
+           18. RENDER QUESTION (EXAM)
            ========================================================================== */
         function renderQuestion(index) {
             currentQuestionIndex = index; const q = questions[index]; if (!q) return;
@@ -1992,9 +2099,6 @@
             if (i === TEACHER_PASSWORD_KEY || i === 'GURU123') { isTeacherLoggedIn = true; closeTeacherAuthModal(); showTeacherDashboardScreen(); }
             else { const err = document.getElementById('teacher-auth-error'); err.textContent = 'Salah!'; err.classList.remove('hidden'); }
         }
-
-        /* [FIX] showTeacherDashboardScreen: tambah loadQuestionPackagesFromCloud() dan loadMasterDataFromCloud()
-           agar saat dashboard dibuka di device baru, data selalu fresh dari cloud */
         function showTeacherDashboardScreen() {
             document.getElementById('screen-start').classList.add('hidden');
             document.getElementById('screen-exam').classList.add('hidden');
@@ -2006,15 +2110,10 @@
             renderMasterClasses(); renderMasterStudents();
             loadAntiCheatSettingsUI();
             renderTeacherDashboard();
-
-            /* [FIX] Force refresh dari cloud saat dashboard dibuka di device baru */
             loadQuestionPackagesFromCloud();
             loadMasterDataFromCloud();
         }
-
         function closeTeacherDashboard() { document.getElementById('screen-teacher').classList.add('hidden'); document.getElementById('screen-start').classList.remove('hidden'); }
-
-        /* [FIX] switchTeacherTab: tambah loadQuestionPackagesFromCloud() saat buka tab packages */
         function switchTeacherTab(tab) {
             currentTeacherTab = tab;
             ['packages','classes','students','anticheat','results'].forEach(t => {
@@ -2022,10 +2121,7 @@
                 if (t === tab) { b.classList.remove('bg-slate-100','text-slate-700'); b.classList.add('bg-teal-600','text-white'); c.classList.remove('hidden'); }
                 else { b.classList.add('bg-slate-100','text-slate-700'); b.classList.remove('bg-teal-600','text-white'); c.classList.add('hidden'); }
             });
-            if (tab === 'packages') {
-                loadQuestionPackagesFromCloud(); /* [FIX] Force sync dari cloud */
-                renderQuestionPackages(); renderActivePackageHighlight();
-            }
+            if (tab === 'packages') { loadQuestionPackagesFromCloud(); renderQuestionPackages(); renderActivePackageHighlight(); }
             if (tab === 'classes') renderMasterClasses();
             if (tab === 'students') {
                 const sorted = [...masterClasses].sort((a,b) => { if (a.grade !== b.grade) return ['X','XI','XII'].indexOf(a.grade) - ['X','XI','XII'].indexOf(b.grade); return a.name.localeCompare(b.name); });
@@ -2053,7 +2149,6 @@
             const fp = document.getElementById('filter-package')?.value || 'ALL';
             const so = document.getElementById('sort-order').value;
             const sq = document.getElementById('search-student').value.toLowerCase().trim();
-
             let f = allSubmissions.filter(s => {
                 if (!s.studentData) return false;
                 const mc = fc === 'ALL' || s.studentData.class === fc;
@@ -2103,10 +2198,8 @@
                 s.violationLog.forEach(v => { vDiv.innerHTML += `<div class="text-rose-700">#${v.count} - ${new Date(v.timestamp).toLocaleString('id-ID')}: ${escapeHtml(v.reason)}</div>`; });
                 b.appendChild(vDiv);
             }
-
             const pack = questionPackages.find(p => p.id === s.packageId);
             const qs = pack ? pack.questions : questions;
-
             qs.forEach(q => {
                 const ua = s.userAnswers ? s.userAnswers[q.id] : null; let ok = false;
                 if (q.type === 'PG' || q.type === 'BS') ok = ua === q.answer;
@@ -2161,7 +2254,6 @@
             const so = document.getElementById('sort-order').value;
             const sq = document.getElementById('search-student').value.toLowerCase().trim();
             const kkm = getActivePackage()?.metadata?.kkm || 75;
-
             let f = allSubmissions.filter(s => {
                 if (!s.studentData) return false;
                 const mc = fc === 'ALL' || s.studentData.class === fc;
@@ -2169,37 +2261,12 @@
                 const ms = (s.studentData.name || '').toLowerCase().includes(sq) || String(s.studentData.no || '').includes(sq);
                 return mc && mp && ms;
             });
-
             if (!f.length) return alert('Tidak ada data untuk diexport!');
-
-            f.sort((a, b) => {
-                if (so === 'NEWEST') return new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0);
-                else if (so === 'SCORE_DESC') return (b.scores?.totalScore || 0) - (a.scores?.totalScore || 0);
-                else if (so === 'SCORE_ASC') return (a.scores?.totalScore || 0) - (b.scores?.totalScore || 0);
-                else if (so === 'NAME_ASC') return (a.studentData?.name || '').localeCompare(b.studentData?.name || '');
-                return 0;
-            });
-
-            const data = f.map((s, i) => ({
-                "No": i + 1,
-                "Nama": s.studentData?.name || '-',
-                "Kelas": s.studentData?.class || '-',
-                "Absen": s.studentData?.no || '-',
-                "Paket Ujian": s.packageName || '-',
-                "PG": s.scores?.scorePG || 0,
-                "B/S": s.scores?.scoreBS || 0,
-                "PGK": s.scores?.scorePGK || 0,
-                "Total Nilai": s.scores?.totalScore || 0,
-                "Status": (s.scores?.totalScore || 0) >= kkm ? 'TUNTAS' : 'REMIDI',
-                "Pelanggaran": s.violationLog?.length || 0,
-                "Auto Submit": s.autoSubmitted ? 'YA' : 'TIDAK',
-                "Waktu Submit": s.submittedAt ? new Date(s.submittedAt).toLocaleString('id-ID') : '-'
-            }));
-
+            f.sort((a, b) => { if (so === 'NEWEST') return new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0); else if (so === 'SCORE_DESC') return (b.scores?.totalScore || 0) - (a.scores?.totalScore || 0); else if (so === 'SCORE_ASC') return (a.scores?.totalScore || 0) - (b.scores?.totalScore || 0); else if (so === 'NAME_ASC') return (a.studentData?.name || '').localeCompare(b.studentData?.name || ''); return 0; });
+            const data = f.map((s, i) => ({ "No": i + 1, "Nama": s.studentData?.name || '-', "Kelas": s.studentData?.class || '-', "Absen": s.studentData?.no || '-', "Paket Ujian": s.packageName || '-', "PG": s.scores?.scorePG || 0, "B/S": s.scores?.scoreBS || 0, "PGK": s.scores?.scorePGK || 0, "Total Nilai": s.scores?.totalScore || 0, "Status": (s.scores?.totalScore || 0) >= kkm ? 'TUNTAS' : 'REMIDI', "Pelanggaran": s.violationLog?.length || 0, "Auto Submit": s.autoSubmitted ? 'YA' : 'TIDAK', "Waktu Submit": s.submittedAt ? new Date(s.submittedAt).toLocaleString('id-ID') : '-' }));
             const ws = XLSX.utils.json_to_sheet(data);
             const cols = Object.keys(data[0]).map(k => ({ wch: Math.max(k.length, 15) }));
             ws['!cols'] = cols;
-
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Hasil Ujian");
             XLSX.writeFile(wb, `Hasil_Ujian_${new Date().toISOString().slice(0,10)}.xlsx`);
@@ -2226,7 +2293,7 @@
         });
 
         document.addEventListener('click', e => {
-            ['modal-teacher-auth','modal-student-detail','modal-edit-student','modal-submit','modal-package-metadata','modal-edit-class','modal-edit-student-master','modal-bulk-student','modal-violation-warning','modal-auto-submit','modal-question-manager','modal-question-edit'].forEach(id => {
+            ['modal-teacher-auth','modal-student-detail','modal-edit-student','modal-submit','modal-package-metadata','modal-edit-class','modal-edit-student-master','modal-bulk-student','modal-violation-warning','modal-auto-submit','modal-question-manager','modal-question-edit','modal-question-view'].forEach(id => {
                 const m = document.getElementById(id); if (m && e.target === m) {
                     if (id === 'modal-violation-warning') acknowledgeViolation();
                     else if (id !== 'modal-auto-submit') { m.classList.add('hidden'); m.classList.remove('flex'); }
@@ -2240,7 +2307,7 @@
                 closeTeacherAuthModal(); closeStudentDetailModal(); closeEditStudentModal();
                 closeSubmitModal(); closePackageMetadataModal(); closeEditClassModal();
                 closeEditStudentMasterModal(); closeBulkStudentModal(); closeNameSuggestions();
-                closeQuestionManager(); closeQuestionEditModal();
+                closeQuestionManager(); closeQuestionEditModal(); closeQuestionViewModal();
             }
         });
 
