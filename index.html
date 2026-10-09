@@ -20,6 +20,17 @@
         .animate-shake { animation: shake 0.3s ease-in-out 2; }
         @keyframes slideDown { from{transform:translateY(-100%);opacity:0} to{transform:translateY(0);opacity:1} }
         .toast-slide { animation: slideDown 0.3s ease-out; }
+        
+        /* Tambahan: mencegah inspect element reveal jawaban */
+        input[type="radio"]:checked,
+        input[type="checkbox"]:checked {
+            accent-color: #2563EB !important;
+        }
+        input[type="radio"]:focus,
+        input[type="checkbox"]:focus {
+            outline: none !important;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3) !important;
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col antialiased selection:bg-teal-500 selection:text-white">
@@ -142,7 +153,7 @@
                     </h3>
                     <div id="question-grid" class="grid grid-cols-5 gap-2 max-h-[360px] overflow-y-auto p-1"></div>
                     <div class="mt-5 pt-4 border-t border-slate-200 text-xs space-y-2 text-slate-600">
-                        <div class="flex items-center gap-2"><span class="w-3.5 h-3.5 bg-teal-600 rounded"></span> Terjawab</div>
+                        <div class="flex items-center gap-2"><span class="w-3.5 h-3.5 bg-blue-600 rounded"></span> Terjawab</div>
                         <div class="flex items-center gap-2"><span class="w-3.5 h-3.5 bg-amber-400 rounded"></span> Ragu-Ragu</div>
                         <div class="flex items-center gap-2"><span class="w-3.5 h-3.5 bg-slate-200 border border-slate-300 rounded"></span> Belum Dijawab</div>
                     </div>
@@ -721,7 +732,7 @@
         let questions = [
             { id: 1, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Enzim merupakan biomolekul yang berperan sebagai katalis biologis dalam berbagai reaksi metabolisme. Enzim sebagian besar tersusun atas molekul protein.<br><br>Berdasarkan karakteristik tersebut, komponen utama penyusun enzim adalah ....', options: ['A. Karbohidrat kompleks yang berfungsi sebagai sumber energi utama sel','B. Asam nukleat yang membawa informasi genetik dalam proses sintesis protein','C. Lipid yang berfungsi sebagai penyimpan energi dalam membran sel','D. Protein yang memiliki struktur tiga dimensi dengan sisi aktif tertentu','E. Mineral anorganik yang digunakan sebagai sumber energi reaksi metabolisme'], answer: 'D', pembahasan: 'Enzim sebagian besar tersusun dari protein (apoenzim) yang membentuk struktur tiga dimensi dengan daerah khusus bernama sisi aktif. Sisi aktif inilah yang berikatan secara spesifik dengan substrat untuk mempercepat reaksi.' },
             { id: 2, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Perhatikan grafik aktivitas enzim terhadap suhu di bawah ini:<br><div class="my-4 flex justify-center bg-white p-3 rounded-lg border border-slate-200"><svg viewBox="0 0 500 240" class="w-full max-w-md h-auto"><line x1="50" y1="200" x2="450" y2="200" stroke="#334155" stroke-width="2"/><line x1="50" y1="200" x2="50" y2="20" stroke="#334155" stroke-width="2"/><text x="250" y="235" text-anchor="middle" class="text-xs font-bold fill-slate-700">Suhu (°C)</text><text x="20" y="110" transform="rotate(-90 20,110)" text-anchor="middle" class="text-xs font-bold fill-slate-700">Aktivitas Enzim</text><path d="M 60 190 Q 180 170 250 40 Q 300 130 420 195" fill="none" stroke="#0D9488" stroke-width="4"/><line x1="250" y1="40" x2="250" y2="200" stroke="#EF4444" stroke-dasharray="4" stroke-width="1.5"/><circle cx="250" cy="40" r="5" fill="#EF4444"/><text x="250" y="30" text-anchor="middle" class="text-xs font-bold fill-rose-600">Suhu Optimum (~37°C)</text></svg></div>Berdasarkan grafik tersebut, aktivitas enzim menurun tajam setelah suhu optimum karena ....', options: ['A. substrat habis','B. enzim mengalami denaturasi','C. energi aktivasi meningkat','D. produk menghambat reaksi','E. kofaktor mengikat substrat'], answer: 'B', pembahasan: 'Suhu di atas optimum menyebabkan ikatan hidrogen dan interaksi pada ikatan protein enzim terputus, sehingga enzim mengalami perubahan bentuk permanen (denaturasi). Hal ini menyebabkan sisi aktif berubah dan tidak dapat lagi mengikat substrat.' },
-            { id: 3, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Seorang siswa melakukan percobaan untuk mengetahui pengaruh konsentrasi hidrogen peroksida (H₂O₂) terhadap aktivitas enzim katalase. Jumlah ekstrak hati yang digunakan pada setiap perlakuan dibuat sama, sedangkan konsentrasi H₂O₂ ditingkatkan secara bertahap.<br><br><b>Hasil percobaan ditunjukkan pada tabel berikut:</b><div class="my-3 overflow-x-auto"><table class="w-full text-xs text-left border-collapse border border-slate-300"><tr class="bg-teal-700 text-white"><th class="border border-slate-300 p-2">Konsentrasi H₂O₂ (%)</th><th class="border border-slate-300 p-2">Laju Reaksi (gelembung O₂/menit)</th></tr><tr><td class="border border-slate-300 p-2">2</td><td class="border border-slate-300 p-2">15</td></tr><tr class="bg-slate-50"><td class="border border-slate-300 p-2">4</td><td class="border border-slate-300 p-2">28</td></tr><tr><td class="border border-slate-300 p-2">6</td><td class="border border-slate-300 p-2">40</td></tr><tr class="bg-slate-50"><td class="border border-slate-300 p-2">8</td><td class="border border-slate-300 p-2">43</td></tr><tr><td class="border border-slate-300 p-2">10</td><td class="border border-slate-300 p-2">43</td></tr></table></div>Berdasarkan hasil percobaan tersebut, penyebab laju reaksi tidak lagi meningkat pada konsentrasi substrat 8% dan 10% adalah ....', options: ['A. Sebagian besar molekul substrat telah berubah menjadi inhibitor sehingga menghambat kerja enzim.','B. Semua sisi aktif enzim telah terikat oleh substrat sehingga penambahan substrat tidak meningkatkan laju reaksi.','C. Konsentrasi substrat yang tinggi menyebabkan seluruh enzim mengalami denaturasi secara permanen.','D. Semakin tinggi konsentrasi substrat menyebabkan energi aktivasi reaksi meningkat sehingga reaksi melambat.','E. Penambahan substrat mengurangi frekuensi tumbukan antara enzim dan substrat sehingga pembentukan produk berkurang.'], answer: 'B', pembahasan: 'Kondisi di mana laju reaksi mencapai titik konstan (jenuh) disebabkan oleh titik kejenuhan enzim (saturation point). Seluruh sisi aktif dari enzim yang ada sudah terikat sempurna dengan substrat (kompleks enzim-substrat penuh).' },
+            { id: 3, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Seorang siswa melakukan percobaan untuk mengetahui pengaruh konsentrasi hidrogen peroksida (H₂O₂) terhadap aktivitas enzim katalase. Jumlah ekstrak hati yang digunakan pada setiap perlakuan dibuat sama, sedangkan konsentrasi H₂O₂ ditingkatkan secara bertahap.<br><br><b>Hasil percobaan ditunjukkan pada tabel berikut:</b><div class="my-3 overflow-x-auto"><table class="w-full text-xs text-left border-collapse border border-slate-300"><tr class="bg-teal-700 text-white"><th class="border border-slate-300 p-2">Konsentrasi H₂O₂ (%)</th><th class="border border-slate-300 p-2">Laju Reaksi (gelembung O₂/menit)</th></tr><tr><td class="border border-slate-300 p-2">2</td><td class="border border-slate-300 p-2">15</td></tr><tr class="bg-slate-50"><td class="border border-slate-300 p-2">4</td><td class="border border-slate-300 p-2">28</td></tr><tr><td class="border border-slate-300 p-2">6</td><td class="border border-slate-300 p-2">40</td></tr><tr class="bg-slate-50"><td class="border border-slate-300 p-2">8</td><td class="border border-slate-300 p-2">43</td></tr><tr><td class="border border-slate-300 p-2">10</td><td class="border border-slate-300 p-2">43</td></tr></table></div>Berdasarkan hasil percobaan tersebut, penyebab laju reaksi tidak lagi meningkat pada konsentrasi substrat 8% dan 10% adalah ....', options: ['A. Sebagian besar molekul substrat telah berubah menjadi inhibitor sehingga menghambat kerja enzim.','B. Semua sisi aktif enzim telah terikat oleh substrat sehingga penambahan substrat tidak meningkatkan laju reaksi.','C. Konsentrasi substrat yang tinggi menyebabkan seluruh enzim mengalami denaturasi secara permanen.','D. Semakin tinggi konsentrasi substrat menyebabkan energi aktivasi reaksi meningkat sehingga reaksi melambat.','E. Penambahan substrat mengurangi frekuensi tumbukan antara enzim dan substrat sehingga pembentukan produk berkurar.'], answer: 'B', pembahasan: 'Kondisi di mana laju reaksi mencapai titik konstan (jenuh) disebabkan oleh titik kejenuhan enzim (saturation point). Seluruh sisi aktif dari enzim yang ada sudah terikat sempurna dengan substrat (kompleks enzim-substrat penuh).' },
             { id: 4, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Perhatikan gambar kerja enzim di bawah ini!<br><div class="my-4 flex justify-center bg-white p-3 rounded-lg border border-slate-200"><svg viewBox="0 0 500 160" class="w-full max-w-lg h-auto"><path d="M 20 120 C 20 60, 60 50, 80 50 C 90 50, 95 70, 105 70 C 115 70, 120 50, 130 50 C 150 50, 180 60, 180 120 Z" fill="#93C5FD" stroke="#1D4ED8" stroke-width="2"/><line x1="105" y1="145" x2="105" y2="80" stroke="#DC2626" stroke-width="3"/><text x="105" y="158" text-anchor="middle" font-weight="bold" fill="#DC2626" class="text-sm">X</text><text x="50" y="100" class="text-xs font-bold fill-blue-900">Enzim</text></svg></div>Bagian yang diberi tanda <b>X</b> merupakan ....', options: ['A. koenzim','B. inhibitor','C. sisi aktif','D. produk','E. apoenzim'], answer: 'C', pembahasan: 'Tanda X menunjuk lekukan khusus pada permukaan molekul enzim tempat menempelnya molekul substrat, yang dikenal sebagai sisi aktif (active site).' },
             { id: 5, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Sebuah industri roti ingin mempercepat proses pemecahan pati menjadi gula. Seluruh kondisi reaksi dibuat sama, tetapi jumlah enzim amilase yang digunakan pada masing-masing reaktor berbeda.<br><div class="my-3 overflow-x-auto"><table class="w-full text-xs text-left border-collapse border border-slate-300"><tr class="bg-teal-700 text-white"><th class="border border-slate-300 p-2">Reaktor</th><th class="border border-slate-300 p-2">Jumlah Enzim</th><th class="border border-slate-300 p-2">Waktu Menghasilkan 100g Gula</th></tr><tr><td class="border border-slate-300 p-2">I</td><td class="border border-slate-300 p-2">1 mL</td><td class="border border-slate-300 p-2">20 menit</td></tr><tr class="bg-slate-50"><td class="border border-slate-300 p-2">II</td><td class="border border-slate-300 p-2">2 mL</td><td class="border border-slate-300 p-2">10 menit</td></tr><tr><td class="border border-slate-300 p-2">III</td><td class="border border-slate-300 p-2">4 mL</td><td class="border border-slate-300 p-2">5 menit</td></tr></table></div>Kesimpulan yang paling tepat berdasarkan data tersebut adalah ....', options: ['A. Penambahan jumlah enzim meningkatkan jumlah sisi aktif yang tersedia sehingga laju reaksi bertambah.','B. Penambahan jumlah enzim meningkatkan energi aktivasi sehingga reaksi berlangsung lebih cepat.','C. Penambahan jumlah enzim menyebabkan produk berubah kembali menjadi substrat.','D. Jumlah enzim tidak memengaruhi laju reaksi karena hanya substrat yang menentukan.','E. Penambahan jumlah enzim menyebabkan seluruh pati berubah menjadi enzim baru.'], answer: 'A', pembahasan: 'Semakin banyak enzim yang ditambahkan, semakin banyak sisi aktif yang siap berikatan dengan substrat, sehingga laju reaksi berbanding lurus dan waktu yang dibutuhkan menjadi lebih singkat.' },
             { id: 6, type: 'PG', section: 'Pilihan Ganda', points: 3, question: 'Fotosintesis merupakan proses penyusunan senyawa organik dari bahan anorganik dengan bantuan energi cahaya. Pada tumbuhan, proses ini berlangsung dalam organel khusus yang memiliki pigmen klorofil.<br><br>Berdasarkan informasi tersebut, organel tempat berlangsungnya fotosintesis adalah ....', options: ['A. Mitokondria yang berfungsi menghasilkan energi melalui oksidasi glukosa','B. Ribosom yang berfungsi menyusun protein dari asam amino','C. Kloroplas yang mengandung klorofil sebagai penangkap energi cahaya','D. Badan Golgi yang berfungsi memodifikasi dan mengemas protein','E. Retikulum endoplasma yang berfungsi dalam transportasi molekul sel'], answer: 'C', pembahasan: 'Kloroplas merupakan plastida yang mengandung klorofil (pigmen hijau daun) yang bertindak sebagai tempat utama proses fotosintesis pada tumbuhan.' },
@@ -1117,12 +1128,26 @@
                         id: p.id,
                         metadata: p.metadata,
                         questions: p.questions,
-                        created_at: p.createdAt
+                        created_at: p.createdAt,
+                        is_active: p.id === activeQuestionPackageId // ADD THIS to sync active state
                     };
                     const { error } = await supabaseClient.from('question_packages').upsert(payload, { onConflict: 'id' });
                     if (error) console.error('Gagal sync paket:', p.id, error);
                 }
             } catch (err) { console.error('Sync packages error:', err); }
+        }
+
+        async function setActivePackageCloud(id) {
+            if (!supabaseClient) return;
+            try {
+                // Set all packages is_active = false
+                await supabaseClient.from('question_packages').update({ is_active: false }).neq('id', id);
+                // Set selected package is_active = true
+                await supabaseClient.from('question_packages').update({ is_active: true }).eq('id', id);
+            } catch (err) {
+                console.error('Gagal update paket aktif:', err);
+                showToast('Gagal mengubah paket aktif di cloud.', 'error');
+            }
         }
 
         async function loadQuestionPackagesFromCloud() {
@@ -1138,18 +1163,38 @@
                         createdAt: p.created_at,
                         questions: p.questions || []
                     }));
+
+                    // CHECK GLOBAL ACTIVE PACKAGE
+                    let cloudActiveId = null;
+                    const activePack = data.find(p => p.is_active === true);
+                    if (activePack) cloudActiveId = activePack.id;
+
                     const currentIds = questionPackages.map(p => p.id).sort().join(',');
                     const cloudIds = cloudPackages.map(p => p.id).sort().join(',');
                     const currentHash = JSON.stringify(questionPackages);
                     const cloudHash = JSON.stringify(cloudPackages);
-                    if (currentIds !== cloudIds || currentHash !== cloudHash) {
+
+                    if (currentIds !== cloudIds || currentHash !== cloudHash || (cloudActiveId && cloudActiveId !== activeQuestionPackageId)) {
                         if (cloudPackages.length > 0) {
                             questionPackages = cloudPackages;
-                            if (!activeQuestionPackageId || !questionPackages.some(p => p.id === activeQuestionPackageId)) {
+
+                            // Update local active package if cloud dictates a change
+                            if (cloudActiveId && cloudActiveId !== activeQuestionPackageId) {
+                                activeQuestionPackageId = cloudActiveId;
+                                const active = getActivePackage();
+                                if (active) {
+                                    questions = cloneQuestions(active.questions);
+                                    userAnswers = {}; userFlags = {}; currentQuestionIndex = 0;
+                                    // Clear local exam attempt if active package changed externally
+                                    if (localStorage.getItem(STORAGE_KEY)) {
+                                        localStorage.removeItem(STORAGE_KEY);
+                                        showToast('Paket ujian diubah oleh guru dari device lain.', 'info');
+                                    }
+                                }
+                            } else if (!activeQuestionPackageId || !questionPackages.some(p => p.id === activeQuestionPackageId)) {
                                 activeQuestionPackageId = questionPackages[0].id;
                             }
-                            const active = getActivePackage();
-                            if (active) questions = cloneQuestions(active.questions);
+
                             persistQuestionPackages(false);
                             updateDynamicUI();
                             if (isTeacherLoggedIn) {
@@ -1264,7 +1309,8 @@
             if (localStorage.getItem(STORAGE_KEY) && !confirm('Ganti paket? Pengerjaan tersimpan akan hilang.')) { renderQuestionPackages(); return; }
             localStorage.removeItem(STORAGE_KEY); activeQuestionPackageId = id; questions = cloneQuestions(pack.questions); userAnswers = {}; userFlags = {}; currentQuestionIndex = 0;
             persistQuestionPackages(); updateDynamicUI(); renderQuestionPackages(); renderActivePackageHighlight();
-            alert(`Paket aktif: ${pack.metadata?.examName || pack.name}\n${questions.length} soal siap digunakan.`);
+            alert(`Paket aktif: ${pack.metadata?.examName || pack.name}\n${questions.length} soal digunakan.`);
+            setActivePackageCloud(id); // Send update to cloud to broadcast to other devices
         }
 
         async function deleteQuestionPackage(id) {
@@ -1290,6 +1336,7 @@
                 activeQuestionPackageId = questionPackages[0].id;
                 questions = cloneQuestions(questionPackages[0].questions || []);
                 updateDynamicUI();
+                setActivePackageCloud(activeQuestionPackageId);
             }
             persistQuestionPackages(false);
             renderQuestionPackages();
@@ -1325,6 +1372,7 @@
             if (id) { const pack = questionPackages.find(p => p.id === id); if (pack) { pack.metadata = metadata; if (id === activeQuestionPackageId) updateDynamicUI(); } alert('Metadata diperbarui!'); pendingImportedQuestions = null; }
             else { const newId = 'pkg-' + Date.now(); questionPackages.push({ id: newId, metadata, createdAt: new Date().toISOString(), questions: pendingImportedQuestions || [] }); activeQuestionPackageId = newId; questions = cloneQuestions(pendingImportedQuestions || []); userAnswers = {}; userFlags = {}; currentQuestionIndex = 0; localStorage.removeItem(STORAGE_KEY); updateDynamicUI(); alert(`Paket "${metadata.examName}" dibuat dengan ${questions.length} soal!`); pendingImportedQuestions = null; }
             persistQuestionPackages(); renderQuestionPackages(); renderActivePackageHighlight(); closePackageMetadataModal();
+            if (supabaseClient) setActivePackageCloud(activeQuestionPackageId);
         }
 
         /* ==========================================================================
@@ -1341,7 +1389,6 @@
             m.classList.add('hidden'); m.classList.remove('flex');
         }
 
-        /* [NEW] renderQuestionList: tambah tombol Lihat (eye icon) untuk setiap soal */
         function renderQuestionList(packId) {
             const pack = questionPackages.find(p => p.id === packId);
             const body = document.getElementById('question-list-body');
@@ -1365,7 +1412,6 @@
             }).join('');
         }
 
-        /* [NEW] openQuestionViewModal: buka modal lihat soal (read-only) */
         function openQuestionViewModal(qId) {
             currentViewQId = qId;
             const pack = questionPackages.find(p => p.id === currentViewPackId) || getActivePackage();
@@ -1381,7 +1427,6 @@
             m.classList.add('hidden'); m.classList.remove('flex');
         }
 
-        /* [NEW] renderQuestionView: render soal + opsi + kunci + pembahasan */
         function renderQuestionView(pack, idx) {
             const qs = pack.questions;
             const q = qs[idx];
@@ -1438,7 +1483,6 @@
             btnNext.classList.toggle('opacity-50', idx === qs.length - 1);
         }
 
-        /* [NEW] navigateViewQuestion: pindah soal di modal view */
         function navigateViewQuestion(dir) {
             const pack = questionPackages.find(p => p.id === currentViewPackId) || getActivePackage();
             if (!pack) return;
@@ -1941,7 +1985,7 @@
         }
 
         /* ==========================================================================
-           18. RENDER QUESTION (EXAM)
+           18. RENDER QUESTION (EXAM) - UPDATED COLOR TO BLUE
            ========================================================================== */
         function renderQuestion(index) {
             currentQuestionIndex = index; const q = questions[index]; if (!q) return;
@@ -1954,8 +1998,8 @@
                 q.options.forEach(opt => {
                     const k = q.type === 'BS' ? opt : opt.charAt(0); const sel = userAnswers[q.id] === k;
                     const c = document.createElement('label');
-                    c.className = `flex items-center p-3.5 rounded-xl border transition cursor-pointer select-none ${sel ? 'bg-teal-50 border-teal-500 text-teal-900 font-medium ring-2 ring-teal-500/20' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`;
-                    c.innerHTML = `<input type="radio" name="q_opt_${q.id}" value="${k}" ${sel ? 'checked' : ''} onchange="selectOption('${k}')" class="w-4 h-4 text-teal-600 focus:ring-teal-500 border-slate-300"><span class="ml-3 text-sm md:text-base">${opt}</span>`;
+                    c.className = `flex items-center p-3.5 rounded-xl border-2 transition cursor-pointer select-none ${sel ? 'bg-blue-50 border-blue-500 text-blue-900 font-semibold ring-2 ring-blue-500/20' : 'bg-white border-slate-200 hover:border-slate-400 hover:bg-slate-50 text-slate-700'}`;
+                    c.innerHTML = `<input type="radio" name="q_opt_${q.id}" value="${k}" ${sel ? 'checked' : ''} onchange="selectOption('${k}')" class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-slate-300"><span class="ml-3 text-sm md:text-base">${opt}</span>`;
                     oc.appendChild(c);
                 });
             } else if (q.type === 'PGK') {
@@ -1963,8 +2007,8 @@
                 q.options.forEach(opt => {
                     const k = opt.charAt(0); const ch = arr.includes(k);
                     const c = document.createElement('label');
-                    c.className = `flex items-start p-3.5 rounded-xl border transition cursor-pointer select-none ${ch ? 'bg-teal-50 border-teal-500 text-teal-900 font-medium ring-2 ring-teal-500/20' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`;
-                    c.innerHTML = `<input type="checkbox" value="${k}" ${ch ? 'checked' : ''} onchange="togglePGKOption('${k}')" class="mt-1 w-4 h-4 text-teal-600 rounded focus:ring-teal-500 border-slate-300"><span class="ml-3 text-sm md:text-base leading-relaxed">${opt}</span>`;
+                    c.className = `flex items-start p-3.5 rounded-xl border-2 transition cursor-pointer select-none ${ch ? 'bg-blue-50 border-blue-500 text-blue-900 font-semibold ring-2 ring-blue-500/20' : 'bg-white border-slate-200 hover:border-slate-400 hover:bg-slate-50 text-slate-700'}`;
+                    c.innerHTML = `<input type="checkbox" value="${k}" ${ch ? 'checked' : ''} onchange="togglePGKOption('${k}')" class="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-slate-300"><span class="ml-3 text-sm md:text-base leading-relaxed">${opt}</span>`;
                     oc.appendChild(c);
                 });
             }
@@ -1988,10 +2032,10 @@
         }
         function getGridBtnClass(i) {
             const q = questions[i]; const a = userAnswers[q.id]; const an = Array.isArray(a) ? a.length > 0 : !!a; const fl = userFlags[q.id]; const cu = i === currentQuestionIndex;
-            let b = "h-9 w-full rounded-lg text-xs font-bold transition flex items-center justify-center border ";
-            if (cu) b += "ring-2 ring-teal-600 ring-offset-1 ";
+            let b = "h-9 w-full rounded-lg text-xs font-bold transition flex items-center justify-center border-2 ";
+            if (cu) b += "ring-2 ring-blue-600 ring-offset-1 ";
             if (fl) return b + "bg-amber-400 text-amber-950 border-amber-500";
-            else if (an) return b + "bg-teal-600 text-white border-teal-700";
+            else if (an) return b + "bg-blue-600 text-white border-blue-700";
             else return b + "bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200";
         }
         function updateGridButton(i) { const b = document.getElementById(`grid-btn-${i}`); if (b) b.className = getGridBtnClass(i); }
