@@ -2100,9 +2100,24 @@
         async function saveSubmissionToCloud(scores, isAutoSubmit, isTimeUp) {
             if (!supabaseClient) return;
             try {
-                const docId = `${studentData.class}_${studentData.no}_${studentData.name.replace(/\s+/g,'_').toLowerCase()}`;
+                // TAMBAHKAN activeQuestionPackageId ke docId agar bisa simpan banyak paket
+                const docId = `${activeQuestionPackageId}_${studentData.class}_${studentData.no}_${studentData.name.replace(/\s+/g,'_').toLowerCase()}`;
                 const pack = getActivePackage();
-                const payload = { id: docId, student_data: studentData, user_answers: userAnswers, scores, submitted_at: new Date().toISOString(), package_id: activeQuestionPackageId, package_name: pack?.metadata?.examName || null, package_grade: pack?.metadata?.grade || null, package_material: pack?.metadata?.material || null, violation_log: violationLog || [], violation_count: violationCount || 0, auto_submitted: isAutoSubmit || false, auto_submit_reason: isAutoSubmit ? 'Pelanggaran Anti-Cheat' : (isTimeUp ? 'Waktu Habis' : null) };
+                const payload = { 
+                    id: docId, 
+                    student_data: studentData, 
+                    user_answers: userAnswers, 
+                    scores, 
+                    submitted_at: new Date().toISOString(), 
+                    package_id: activeQuestionPackageId, 
+                    package_name: pack?.metadata?.examName || null, 
+                    package_grade: pack?.metadata?.grade || null, 
+                    package_material: pack?.metadata?.material || null, 
+                    violation_log: violationLog || [], 
+                    violation_count: violationCount || 0, 
+                    auto_submitted: isAutoSubmit || false, 
+                    auto_submit_reason: isAutoSubmit ? 'Pelanggaran Anti-Cheat' : (isTimeUp ? 'Waktu Habis' : null) 
+                };
                 const { error } = await supabaseClient.from('submissions').upsert(payload, { onConflict: 'id' });
                 if (error) console.error('Save gagal:', error);
             } catch (err) { console.error(err); }
@@ -2305,16 +2320,32 @@
             const nno = document.getElementById('edit-no').value.trim();
             if (!nn || !nc || !nno) return alert('Lengkapi!');
             const old = allSubmissions.find(x => x.docId === oldId); if (!old) return;
-            const newId = `${nc}_${nno}_${nn.replace(/\s+/g,'_').toLowerCase()}`;
+            
+            // TAMBAHKAN old.packageId ke newId agar tidak menimpa paket lain saat edit
+            const newId = `${old.packageId || activeQuestionPackageId}_${nc}_${nno}_${nn.replace(/\s+/g,'_').toLowerCase()}`;
+            
             if (!confirm(`Simpan? Nama: ${old.studentData?.name} → ${nn}`)) return;
             try {
-                const payload = { id: newId, student_data: { name: nn, class: nc, no: nno }, user_answers: old.userAnswers || {}, scores: old.scores || {}, submitted_at: old.submittedAt || new Date().toISOString(), package_id: old.packageId || activeQuestionPackageId, package_name: old.packageName || getActivePackage()?.metadata?.examName || null, violation_log: old.violationLog || [], auto_submitted: old.autoSubmitted || false, auto_submit_reason: old.autoSubmitReason || null };
+                const payload = { 
+                    id: newId, 
+                    student_data: { name: nn, class: nc, no: nno }, 
+                    user_answers: old.userAnswers || {}, 
+                    scores: old.scores || {}, 
+                    submitted_at: old.submittedAt || new Date().toISOString(), 
+                    package_id: old.packageId || activeQuestionPackageId, 
+                    package_name: old.packageName || getActivePackage()?.metadata?.examName || null, 
+                    violation_log: old.violationLog || [], 
+                    auto_submitted: old.autoSubmitted || false, 
+                    auto_submit_reason: old.autoSubmitReason || null 
+                };
                 if (newId !== oldId) {
                     const cf = allSubmissions.find(x => x.docId === newId);
                     if (cf) { if (!confirm(`Sudah ada "${cf.studentData?.name}". Timpa?`)) return; await supabaseClient.from('submissions').delete().eq('id', newId); }
                     const { error: ue } = await supabaseClient.from('submissions').upsert(payload, { onConflict: 'id' }); if (ue) throw ue;
                     const { error: de } = await supabaseClient.from('submissions').delete().eq('id', oldId); if (de) console.warn(de);
-                } else { const { error: ue } = await supabaseClient.from('submissions').upsert(payload, { onConflict: 'id' }); if (ue) throw ue; }
+                } else { 
+                    const { error: ue } = await supabaseClient.from('submissions').upsert(payload, { onConflict: 'id' }); if (ue) throw ue; 
+                }
                 alert('Diperbarui!'); closeEditStudentModal(); await fetchSubmissions(); renderTeacherDashboard();
             } catch (err) { alert('Gagal: ' + err.message); }
         }
