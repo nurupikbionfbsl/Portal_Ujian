@@ -21,15 +21,13 @@
         @keyframes slideDown { from{transform:translateY(-100%);opacity:0} to{transform:translateY(0);opacity:1} }
         .toast-slide { animation: slideDown 0.3s ease-out; }
         
-        /* Tambahan: mencegah inspect element reveal jawaban */
-        input[type="radio"]:checked,
-        input[type="checkbox"]:checked {
-            accent-color: #2563EB !important;
-        }
-        input[type="radio"]:focus,
-        input[type="checkbox"]:focus {
-            outline: none !important;
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3) !important;
+        /* Sembunyikan radio bawaan HANYA di layar ujian siswa */
+        #screen-exam input[type="radio"],
+        #screen-exam input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
         }
     </style>
 </head>
@@ -1535,22 +1533,30 @@
             let html = '';
             if (type === 'BS') {
                 let ans = existingQ ? existingQ.answer : '';
-                html = `<div class="flex items-center gap-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <label class="flex items-center gap-2"><input type="radio" name="q-edit-answer-bs" value="BENAR" ${ans==='BENAR'?'checked':''}> <strong>BENAR</strong></label>
-                    <label class="flex items-center gap-2"><input type="radio" name="q-edit-answer-bs" value="SALAH" ${ans==='SALAH'?'checked':''}> <strong>SALAH</strong></label>
+                html = `<div class="flex items-center gap-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="q-edit-answer-bs" value="BENAR" ${ans==='BENAR'?'checked':''} class="w-5 h-5 text-teal-600 focus:ring-teal-500">
+                        <strong class="text-sm">BENAR</strong>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="q-edit-answer-bs" value="SALAH" ${ans==='SALAH'?'checked':''} class="w-5 h-5 text-teal-600 focus:ring-teal-500">
+                        <strong class="text-sm">SALAH</strong>
+                    </label>
                 </div>`;
                 container.innerHTML = html;
             } else if (type === 'PG' || type === 'PGK') {
                 let opts = existingQ ? existingQ.options : [];
                 let ans = existingQ ? existingQ.answer : [];
                 if (!Array.isArray(ans) && ans) ans = [ans];
+                
                 for (let i = 0; i < 5; i++) {
                     let letter = String.fromCharCode(65 + i);
                     let val = opts[i] ? opts[i].replace(/^[A-E]\.\s*/, '') : '';
                     let isAns = ans.includes(letter);
-                    html += `<div class="flex items-center gap-2">
-                        <input type="${type === 'PGK' ? 'checkbox' : 'radio'}" name="q-edit-answer" value="${letter}" ${isAns?'checked':''} class="w-4 h-4 text-teal-600 rounded focus:ring-teal-500 border-slate-300">
-                        <input type="text" id="q-edit-opt-${letter}" value="${escapeHtml(val)}" placeholder="Opsi ${letter}" class="flex-1 px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-1 focus:ring-teal-500 outline-none">
+                    
+                    html += `<div class="flex items-center gap-3 p-2 border border-slate-200 rounded-lg bg-slate-50 mb-2">
+                        <input type="${type === 'PGK' ? 'checkbox' : 'radio'}" name="q-edit-answer" value="${letter}" ${isAns?'checked':''} class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500 border-slate-300 shrink-0">
+                        <input type="text" id="q-edit-opt-${letter}" value="${escapeHtml(val)}" placeholder="Opsi ${letter}" class="flex-1 px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-1 focus:ring-teal-500 outline-none bg-white">
                     </div>`;
                 }
                 container.innerHTML = html;
@@ -1984,8 +1990,8 @@
             }, 1000);
         }
 
-        /* ==========================================================================
-           18. RENDER QUESTION (EXAM) - UPDATED COLOR TO BLUE
+                /* ==========================================================================
+           18. RENDER QUESTION (EXAM) - DENGAN CUSTOM RADIO BUTTON
            ========================================================================== */
         function renderQuestion(index) {
             currentQuestionIndex = index; const q = questions[index]; if (!q) return;
@@ -1994,24 +2000,46 @@
             document.getElementById('q-points').textContent = `${q.points} Poin`;
             document.getElementById('q-content').innerHTML = q.question;
             const oc = document.getElementById('q-options'); oc.innerHTML = '';
+            
             if (q.type === 'PG' || q.type === 'BS') {
                 q.options.forEach(opt => {
-                    const k = q.type === 'BS' ? opt : opt.charAt(0); const sel = userAnswers[q.id] === k;
+                    const k = q.type === 'BS' ? opt : opt.charAt(0); 
+                    const sel = userAnswers[q.id] === k;
                     const c = document.createElement('label');
-                    c.className = `flex items-center p-3.5 rounded-xl border-2 transition cursor-pointer select-none ${sel ? 'bg-blue-50 border-blue-500 text-blue-900 font-semibold ring-2 ring-blue-500/20' : 'bg-white border-slate-200 hover:border-slate-400 hover:bg-slate-50 text-slate-700'}`;
-                    c.innerHTML = `<input type="radio" name="q_opt_${q.id}" value="${k}" ${sel ? 'checked' : ''} onchange="selectOption('${k}')" class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-slate-300"><span class="ml-3 text-sm md:text-base">${opt}</span>`;
+                    c.className = `flex items-center p-3.5 rounded-xl border-2 transition cursor-pointer select-none relative ${sel ? 'bg-blue-50 border-blue-500 text-blue-900 font-semibold ring-2 ring-blue-500/20' : 'bg-white border-slate-200 hover:border-slate-400 hover:bg-slate-50 text-slate-700'}`;
+                    
+                    // Indikator lingkaran kustom
+                    const indicatorBg = sel ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white';
+                    c.innerHTML = `
+                        <span class="w-5 h-5 rounded-full border-2 ${indicatorBg} flex items-center justify-center transition shrink-0 mr-3">
+                            ${sel ? '<span class="w-2.5 h-2.5 bg-white rounded-full"></span>' : ''}
+                        </span>
+                        <input type="radio" name="q_opt_${q.id}" value="${k}" ${sel ? 'checked' : ''} onchange="selectOption('${k}')">
+                        <span class="text-sm md:text-base">${opt}</span>
+                    `;
                     oc.appendChild(c);
                 });
             } else if (q.type === 'PGK') {
                 const arr = userAnswers[q.id] || [];
                 q.options.forEach(opt => {
-                    const k = opt.charAt(0); const ch = arr.includes(k);
+                    const k = opt.charAt(0); 
+                    const ch = arr.includes(k);
                     const c = document.createElement('label');
-                    c.className = `flex items-start p-3.5 rounded-xl border-2 transition cursor-pointer select-none ${ch ? 'bg-blue-50 border-blue-500 text-blue-900 font-semibold ring-2 ring-blue-500/20' : 'bg-white border-slate-200 hover:border-slate-400 hover:bg-slate-50 text-slate-700'}`;
-                    c.innerHTML = `<input type="checkbox" value="${k}" ${ch ? 'checked' : ''} onchange="togglePGKOption('${k}')" class="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-slate-300"><span class="ml-3 text-sm md:text-base leading-relaxed">${opt}</span>`;
+                    c.className = `flex items-start p-3.5 rounded-xl border-2 transition cursor-pointer select-none relative ${ch ? 'bg-blue-50 border-blue-500 text-blue-900 font-semibold ring-2 ring-blue-500/20' : 'bg-white border-slate-200 hover:border-slate-400 hover:bg-slate-50 text-slate-700'}`;
+                    
+                    // Indikator kotak kustom (checkbox)
+                    const indicatorBg = ch ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white text-transparent';
+                    c.innerHTML = `
+                        <span class="w-5 h-5 rounded-md border-2 ${indicatorBg} flex items-center justify-center transition shrink-0 mt-0.5 mr-3">
+                            ${ch ? '<i class="fa-solid fa-check text-xs"></i>' : ''}
+                        </span>
+                        <input type="checkbox" value="${k}" ${ch ? 'checked' : ''} onchange="togglePGKOption('${k}')">
+                        <span class="text-sm md:text-base leading-relaxed">${opt}</span>
+                    `;
                     oc.appendChild(c);
                 });
             }
+            
             document.getElementById('btn-prev').disabled = index === 0;
             document.getElementById('btn-prev').classList.toggle('opacity-50', index === 0);
             document.getElementById('btn-next').disabled = index === questions.length - 1;
